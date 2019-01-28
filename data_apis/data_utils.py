@@ -89,7 +89,6 @@ class LongDataLoader(object):
 
 class SWDADataLoader(LongDataLoader):
     def __init__(self, name, data, meta_data, config):
-        assert len(data) == len(meta_data)
         self.name = name
         self.data = data
         self.meta_data = meta_data
