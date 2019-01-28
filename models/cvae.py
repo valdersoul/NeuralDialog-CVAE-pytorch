@@ -120,10 +120,10 @@ class KgRnnCVAE(BaseTFModel):
         self.vocab = api.vocab
         self.rev_vocab = api.rev_vocab
         self.vocab_size = len(self.vocab)
-        self.topic_vocab = api.topic_vocab
-        self.topic_vocab_size = len(self.topic_vocab)
-        self.da_vocab = api.dialog_act_vocab
-        self.da_vocab_size = len(self.da_vocab)
+        #self.topic_vocab = api.topic_vocab
+        #self.topic_vocab_size = len(self.topic_vocab)
+        #self.da_vocab = api.dialog_act_vocab
+        #self.da_vocab_size = len(self.da_vocab)
         self.scope = scope
         self.max_utt_len = config.max_utt_len
         self.go_id = self.rev_vocab["<s>"]
@@ -143,7 +143,7 @@ class KgRnnCVAE(BaseTFModel):
         self.grad_noise = config.grad_noise
 
         # topicEmbedding
-        self.t_embedding = nn.Embedding(self.topic_vocab_size, config.topic_embed_size)
+        #self.t_embedding = nn.Embedding(self.topic_vocab_size, config.topic_embed_size)
         if self.use_hcf:
             # dialogActEmbedding
             self.d_embedding = nn.Embedding(self.da_vocab_size, config.da_embed_size)
@@ -251,8 +251,8 @@ class KgRnnCVAE(BaseTFModel):
         max_out_len = self.output_tokens.size(1)
         batch_size = self.input_contexts.size(0)
 
-        with variable_scope.variable_scope("topicEmbedding"):
-            topic_embedding = self.t_embedding(self.topics)
+        # with variable_scope.variable_scope("topicEmbedding"):
+        #     topic_embedding = self.t_embedding(self.topics)
 
         if self.use_hcf:
             with variable_scope.variable_scope("dialogActEmbedding"):

@@ -5,6 +5,146 @@ import numpy as np
 import nltk
 
 
+class PERSONADialogCorpus(object):
+
+    def __init__(self, corpus_path, type, max_vocab_cnt=10000, word2vec=None, word2vec_dim=None):
+        """
+        :param corpus_path: the folder that contains the SWDA dialog corpus
+        """
+        self.type = type
+        self._path = corpus_path
+        self.word_vec_path = word2vec
+        self.word2vec_dim = word2vec_dim
+        self.word2vec = None
+        self.dialog_id = 0
+        self.persona_id = 1
+        self.utt_id = 2
+        self.train_corpus = self.process(corpus_path, type)
+        self.valid_corpus = self.process(corpus_path.replace('train', 'valid'), type)
+        self.build_vocab(max_vocab_cnt)
+        self.load_word2vec()
+        print("Done loading corpus")
+
+    def process(self, path, type):
+        persona_type = {'self': 'your persona:', 'other': 'partner\'s persona', 'none': 'nopersona'}
+        new_dialog = []
+        new_utts = []
+        new_persona = []
+        all_lenes = []
+        with open(path, 'r') as f:
+            lines = f.readlines()
+
+        dialog = []
+        utts = []
+        persona = []
+
+        for l in lines:
+            sentences = l.strip('\n').split('\t')
+            flag = int(sentences[0].split()[0]) == 1
+
+            if len(utts) and flag:
+                dialog = [(utt, int(i % 2 == 1),) for i, utt in enumerate(utts)]
+                new_dialog.append(dialog)
+                new_utts.extend(utts)
+                all_lenes.extend([len(u) for u in utts])
+                if persona_type[type] is not None:
+                    new_persona.append(persona)
+                    all_lenes.extend([len(u) for u in persona])
+
+                dialog = []
+                utts = []
+                persona = []
+
+            if persona_type[type] in sentences[0]:
+                persona.append(
+                    ["<s>"] + nltk.WordPunctTokenizer().tokenize(sentences[0].split(':')[1].strip().lower()) + ["</s>"])
+            else:
+                s = [sentences[0][2:], sentences[1]]
+                lower_utt = [["<s>"] + nltk.WordPunctTokenizer().tokenize(utt.lower()) + ["</s>"] for utt in s]
+                utts += lower_utt
+
+        print("Max utt len %d, mean utt len %.2f" % (np.max(all_lenes), float(np.mean(all_lenes))))
+        return new_dialog, new_persona, new_utts
+
+    def build_vocab(self, max_vocab_cnt):
+        all_words = []
+        for tokens in self.train_corpus[self.utt_id]:
+            all_words.extend(tokens)
+        if not self.train_corpus[self.persona_id]:
+            print('loading persona words')
+            for tokens in self.train_corpus[self.persona_id]:
+                all_words.extend(tokens)
+        vocab_count = Counter(all_words).most_common()
+        raw_vocab_size = len(vocab_count)
+        discard_wc = np.sum([c for t, c, in vocab_count[max_vocab_cnt:]])
+        vocab_count = vocab_count[0:max_vocab_cnt]
+
+        # create vocabulary list sorted by count
+        print("Load corpus with train size %d, valid size %d, "
+              "raw vocab size %d vocab size %d at cut_off %d OOV rate %f"
+              % (len(self.train_corpus), len(self.valid_corpus),
+                 raw_vocab_size, len(vocab_count), vocab_count[-1][1], float(discard_wc) / len(all_words)))
+
+        self.vocab = ["<pad>", "<unk>"] + [t for t, cnt in vocab_count]
+        self.rev_vocab = {t: idx for idx, t in enumerate(self.vocab)}
+        self.unk_id = self.rev_vocab["<unk>"]
+        print("<sil> index %d" % self.rev_vocab.get("<sil>", -1))
+
+    def load_word2vec(self):
+        if self.word_vec_path is None:
+            return
+        with open(self.word_vec_path, "rb") as f:
+            lines = f.readlines()
+        raw_word2vec = {}
+        for l in lines:
+            w, vec = l.split(" ", 1)
+            raw_word2vec[w] = vec
+        # clean up lines for memory efficiency
+        self.word2vec = []
+        oov_cnt = 0
+        for v in self.vocab:
+            str_vec = raw_word2vec.get(v, None)
+            if str_vec is None:
+                oov_cnt += 1
+                vec = np.random.randn(self.word2vec_dim) * 0.1
+            else:
+                vec = np.fromstring(str_vec, sep=" ")
+            self.word2vec.append(vec)
+        print("word2vec cannot cover %f vocab" % (float(oov_cnt) / len(self.vocab)))
+
+    def get_dialog_corpus(self):
+        def _to_id_corpus(data):
+            results = []
+            for dialog in data:
+                temp = []
+                # convert utterance and feature into numeric numbers
+                for utt, floor in dialog:
+                    temp.append(([self.rev_vocab.get(t, self.unk_id) for t in utt], floor))
+                results.append(temp)
+            return results
+
+        id_train = _to_id_corpus(self.train_corpus[self.dialog_id])
+        id_valid = _to_id_corpus(self.valid_corpus[self.dialog_id])
+        return {'train': id_train, 'valid': id_valid}
+
+    def get_persona_corpus(self):
+        if self.type == 'none':
+            return
+
+        def _to_id_corpus(data):
+            results = []
+            for persona in data:
+                temp = []
+                # convert utterance and feature into numeric numbers
+                for profile in persona:
+                    temp.append([self.rev_vocab.get(t, self.unk_id) for t in profile])
+                results.append(temp)
+            return results
+
+        id_train = _to_id_corpus(self.train_corpus[self.persona_id])
+        id_valid = _to_id_corpus(self.valid_corpus[self.persona_id])
+        return {'train': id_train, 'valid': id_valid}
+
 class SWDADialogCorpus(object):
     dialog_act_id = 0
     sentiment_id = 1

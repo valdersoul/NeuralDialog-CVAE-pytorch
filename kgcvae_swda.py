@@ -7,8 +7,8 @@ import numpy as np
 import tensorflow as tf
 from beeprint import pp
 
-from config_utils import KgCVAEConfig as Config
-from data_apis.corpus import SWDADialogCorpus
+from config_utils import ProfileBaselineConfig as Config
+from data_apis.corpus import SWDADialogCorpus, PERSONADialogCorpus
 from data_apis.data_utils import SWDADataLoader
 from models.cvae import KgRnnCVAE
 
@@ -53,17 +53,20 @@ def main():
     pp(config)
 
     # get data set
-    api = SWDADialogCorpus(FLAGS.data_dir, word2vec=FLAGS.word2vec_path, word2vec_dim=config.embed_size)
+    #api = SWDADialogCorpus(FLAGS.data_dir, word2vec=FLAGS.word2vec_path, word2vec_dim=config.embed_size)
+    api = PERSONADialogCorpus("data/convai2/train_none_original_no_cands.txt", 'none')
     dial_corpus = api.get_dialog_corpus()
-    meta_corpus = api.get_meta_corpus()
+    #meta_corpus = api.get_meta_corpus()
 
-    train_meta, valid_meta, test_meta = meta_corpus.get("train"), meta_corpus.get("valid"), meta_corpus.get("test")
-    train_dial, valid_dial, test_dial = dial_corpus.get("train"), dial_corpus.get("valid"), dial_corpus.get("test")
+    #train_meta, valid_meta, test_meta = meta_corpus.get("train"), meta_corpus.get("valid"), meta_corpus.get("test")
+    #train_dial, valid_dial, test_dial = dial_corpus.get("train"), dial_corpus.get("valid"), dial_corpus.get("test")
+
+    train_dial, valid_dial = dial_corpus.get("train"), dial_corpus.get("valid")
 
     # convert to numeric input outputs that fits into TF models
-    train_feed = SWDADataLoader("Train", train_dial, train_meta, config)
-    valid_feed = SWDADataLoader("Valid", valid_dial, valid_meta, config)
-    test_feed = SWDADataLoader("Test", test_dial, test_meta, config)
+    train_feed = SWDADataLoader("Train", train_dial, None, config)
+    valid_feed = SWDADataLoader("Valid", valid_dial, None, config)
+    #test_feed = SWDADataLoader("Test", test_dial, test_meta, config)
 
     if FLAGS.forward_only or FLAGS.resume:
         log_dir = os.path.join(FLAGS.work_dir, FLAGS.test_path)
@@ -126,9 +129,9 @@ def main():
                 model.eval()
                 valid_loss = model.valid_model("ELBO_VALID", valid_feed)
 
-                test_feed.epoch_init(test_config.batch_size, test_config.backward_size,
-                                     test_config.step_size, shuffle=True, intra_shuffle=False)
-                model.test_model(test_feed, num_batch=5)
+                # test_feed.epoch_init(test_config.batch_size, test_config.backward_size,
+                #                      test_config.step_size, shuffle=True, intra_shuffle=False)
+                # model.test_model(test_feed, num_batch=5)
                 model.train()
 
                 done_epoch = epoch + 1
@@ -161,14 +164,14 @@ def main():
             model.eval()
             model.valid_model("ELBO_VALID", valid_feed)
 
-            test_feed.epoch_init(valid_config.batch_size, valid_config.backward_size,
-                                  valid_config.step_size, shuffle=False, intra_shuffle=False)
-            model.valid_model("ELBO_TEST", test_feed)
+            # test_feed.epoch_init(valid_config.batch_size, valid_config.backward_size,
+            #                       valid_config.step_size, shuffle=False, intra_shuffle=False)
+            # model.valid_model("ELBO_TEST", test_feed)
 
             dest_f = open(os.path.join(log_dir, "test.txt"), "wb")
-            test_feed.epoch_init(test_config.batch_size, test_config.backward_size,
-                                 test_config.step_size, shuffle=False, intra_shuffle=False)
-            model.test_model(test_feed, num_batch=None, repeat=10, dest=dest_f)
+            # test_feed.epoch_init(test_config.batch_size, test_config.backward_size,
+            #                      test_config.step_size, shuffle=False, intra_shuffle=False)
+            # model.test_model(test_feed, num_batch=None, repeat=10, dest=dest_f)
             model.train()
             dest_f.close()
 
