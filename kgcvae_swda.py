@@ -140,21 +140,24 @@ def main():
                 if config.op == "sgd" and done_epoch > config.lr_hold:
                     model.learning_rate_decay()
 
-                if valid_loss < best_dev_loss:
-                    if valid_loss <= dev_loss_threshold * config.improve_threshold:
+                if valid_loss[0] < best_dev_loss:
+                    if valid_loss[0] <= dev_loss_threshold * config.improve_threshold:
                         patience = max(patience, done_epoch * config.patient_increase)
-                        dev_loss_threshold = valid_loss
+                        dev_loss_threshold = valid_loss[0]
 
                     # still save the best train model
                     if FLAGS.save_model:
                         print("Save model!!")
                         torch.save(model.state_dict(), dm_checkpoint_path %(epoch))
-                    best_dev_loss = valid_loss
+                    best_dev_loss = valid_loss[0]
+                    best_dev_losses = valid_loss
 
                 if config.early_stop and patience <= done_epoch:
                     print("!!Early stop due to run out of patience!!")
                     break
             print("Best validation loss %f" % best_dev_loss)
+            model.print_loss("ELBO_BEST", ["elbo_loss", "bow_loss", "rc_loss", "rc_peplexity", "kl_loss"],
+                                     best_dev_losses, "")
             print("Done training")
         else:
             # begin validation

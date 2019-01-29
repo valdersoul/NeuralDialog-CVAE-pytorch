@@ -570,7 +570,7 @@ class KgRnnCVAE(BaseTFModel):
 
         avg_losses = self.print_loss(name, ["elbo_loss", "bow_loss", "rc_loss", "rc_peplexity", "kl_loss"],
                                      [elbo_losses, bow_losses, rc_losses, rc_ppls, kl_losses], "")
-        return avg_losses[0]
+        return avg_losses
 
     def test_model(self, test_feed, num_batch=None, repeat=5, dest=sys.stdout):
         local_t = 0
