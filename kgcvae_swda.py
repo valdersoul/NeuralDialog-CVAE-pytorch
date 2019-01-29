@@ -106,7 +106,7 @@ def main():
         # 
 
         # turn to cuda
-        #model.cuda()
+        model.cuda()
 
         if not FLAGS.forward_only:
             dm_checkpoint_path = os.path.join(ckp_dir, model.__class__.__name__+ "-%d.pth")
