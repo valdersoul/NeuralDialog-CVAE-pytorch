@@ -9,7 +9,7 @@ from beeprint import pp
 
 from config_utils import ProfileBaselineConfig as Config
 from data_apis.corpus import SWDADialogCorpus, PERSONADialogCorpus
-from data_apis.data_utils import SWDADataLoader
+from data_apis.data_utils import PERSONAataLoader
 from models.cvae import KgRnnCVAE
 
 import torch
@@ -64,8 +64,8 @@ def main():
     train_dial, valid_dial = dial_corpus.get("train"), dial_corpus.get("valid")
 
     # convert to numeric input outputs that fits into TF models
-    train_feed = SWDADataLoader("Train", train_dial, None, config)
-    valid_feed = SWDADataLoader("Valid", valid_dial, None, config)
+    train_feed = PERSONAataLoader("Train", train_dial, None, config)
+    valid_feed = PERSONAataLoader("Valid", valid_dial, None, config)
     #test_feed = SWDADataLoader("Test", test_dial, test_meta, config)
 
     if FLAGS.forward_only or FLAGS.resume:
@@ -106,7 +106,7 @@ def main():
         # 
 
         # turn to cuda
-        model.cuda()
+        #model.cuda()
 
         if not FLAGS.forward_only:
             dm_checkpoint_path = os.path.join(ckp_dir, model.__class__.__name__+ "-%d.pth")

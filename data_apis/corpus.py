@@ -26,16 +26,17 @@ class PERSONADialogCorpus(object):
         print("Done loading corpus")
 
     def process(self, path, type):
-        persona_type = {'self': 'your persona:', 'other': 'partner\'s persona', 'none': 'nopersona'}
+        persona_type = {'self': 'your persona:', 'other': 'partner\'s persona', 'none': 'nopersona', 'both': ['your persona:', 'partner\'s persona']}
         new_dialog = []
         new_utts = []
         new_persona = []
         all_lenes = []
+        bod_utt = ["<s>", "<d>", "</s>"]
         with open(path, 'r') as f:
             lines = f.readlines()
 
         dialog = []
-        utts = []
+        utts = [bod_utt]
         persona = []
 
         for l in lines:
@@ -43,7 +44,7 @@ class PERSONADialogCorpus(object):
             flag = int(sentences[0].split()[0]) == 1
 
             if len(utts) and flag:
-                dialog = [(utt, int(i % 2 == 1),) for i, utt in enumerate(utts)]
+                dialog = [(utt, int(i % 2 == 0),) for i, utt in enumerate(utts)]
                 new_dialog.append(dialog)
                 new_utts.extend(utts)
                 all_lenes.extend([len(u) for u in utts])
@@ -52,7 +53,7 @@ class PERSONADialogCorpus(object):
                     all_lenes.extend([len(u) for u in persona])
 
                 dialog = []
-                utts = []
+                utts = [bod_utt]
                 persona = []
 
             if persona_type[type] in sentences[0]:

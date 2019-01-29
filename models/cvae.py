@@ -324,8 +324,9 @@ class KgRnnCVAE(BaseTFModel):
             attribute_embedding = da_embedding
             attribute_fc1 = self.attribute_fc1(attribute_embedding)
 
-        cond_list = [topic_embedding, self.my_profile, self.ot_profile, enc_last_state]
-        cond_embedding = torch.cat(cond_list, 1)
+        #cond_list = [topic_embedding, self.my_profile, self.ot_profile, enc_last_state]
+        #cond_embedding = torch.cat(cond_list, 1)
+        cond_embedding = enc_last_state
 
         with variable_scope.variable_scope("recognitionNetwork"):
             if self.use_hcf:
@@ -363,7 +364,7 @@ class KgRnnCVAE(BaseTFModel):
                     selected_attribute_embedding = attribute_embedding
                 dec_inputs = torch.cat([gen_inputs, selected_attribute_embedding], 1)
             else:
-                self.da_logits = gen_inputs.new_zeros(batch_size, self.da_vocab_size)
+                #self.da_logits = gen_inputs.new_zeros(batch_size, self.da_vocab_size)
                 dec_inputs = gen_inputs
 
             # Decoder
@@ -408,7 +409,7 @@ class KgRnnCVAE(BaseTFModel):
                 dec_input_embedding = F.dropout(dec_input_embedding, 1 - self.keep_prob, self.training)
 
                 dec_outs, _, final_context_state =  decoder_fn_lib.train_loop(self.dec_cell, self.dec_cell_proj, dec_input_embedding, 
-                    init_state=dec_init_state, context_vector=selected_attribute_embedding, sequence_length=dec_seq_lens)
+                    init_state=dec_init_state, context_vector=selected_attribute_embedding if self.use_hcf else None, sequence_length=dec_seq_lens)
 
             # dec_outs, _, final_context_state = dynamic_rnn_decoder(dec_cell, loop_func, inputs=dec_input_embedding, sequence_length=dec_seq_lens)
             if final_context_state is not None:
@@ -488,7 +489,8 @@ class KgRnnCVAE(BaseTFModel):
         if global_t is not None:
             feed_dict["global_t"] = global_t
 
-        feed_dict = {k: torch.from_numpy(v).cuda() if isinstance(v, np.ndarray) else v for k, v in feed_dict.items()}
+        #feed_dict = {k: torch.from_numpy(v).cuda() if isinstance(v, np.ndarray) else v for k, v in feed_dict.items()}
+        feed_dict = {k: torch.from_numpy(v) if isinstance(v, np.ndarray) else v for k, v in feed_dict.items()}
 
         return feed_dict
 
