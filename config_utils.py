@@ -69,7 +69,7 @@ class ProfileBaselineConfig(object):
     # Network general
     cell_type = "gru"  # gru or lstm
     embed_size = 200  # word embedding size
-    #topic_embed_size = 30  # topic embedding size, meta topic data in the original paper
+    topic_embed_size = 0  # topic embedding size, meta topic data in the original paper
     da_embed_size = 30  # dialog act embedding size
     cxt_cell_size = 600  # context encoder hidden size
     sent_cell_size = 300  # utterance encoder hidden size

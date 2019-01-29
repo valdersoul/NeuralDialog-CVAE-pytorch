@@ -167,7 +167,7 @@ class KgRnnCVAE(BaseTFModel):
 
         self.attribute_fc1 = nn.Sequential(nn.Linear(config.da_embed_size, 30), nn.Tanh())
 
-        cond_embedding_size = config.topic_embed_size + 4 + 4 + self.context_cell_size
+        cond_embedding_size = config.topic_embed_size + self.context_cell_size #+ 4 + 4
 
         # recognitionNetwork
         recog_input_size = cond_embedding_size + output_embedding_size
@@ -225,8 +225,8 @@ class KgRnnCVAE(BaseTFModel):
             self.floors = tf.placeholder(dtype=tf.int32, shape=(None, None), name="floor")
             self.context_lens = tf.placeholder(dtype=tf.int32, shape=(None,), name="context_lens")
             self.topics = tf.placeholder(dtype=tf.int32, shape=(None,), name="topics")
-            self.my_profile = tf.placeholder(dtype=tf.float32, shape=(None, 4), name="my_profile")
-            self.ot_profile = tf.placeholder(dtype=tf.float32, shape=(None, 4), name="ot_profile")
+            #self.my_profile = tf.placeholder(dtype=tf.float32, shape=(None, 4), name="my_profile")
+            #self.ot_profile = tf.placeholder(dtype=tf.float32, shape=(None, 4), name="ot_profile")
 
             # target response given the dialog context
             self.output_tokens = tf.placeholder(dtype=tf.int32, shape=(None, None), name="output_token")
