@@ -117,7 +117,7 @@ class SWDADataLoader(LongDataLoader):
 
         batch_ids = self.batch_indexes[b_id]
         rows = [self.data[idx] for idx in batch_ids]
-        if not self.meta_data:
+        if self.meta_data:
             meta_rows = [self.meta_data[idx] for idx in batch_ids]
             topics = np.array([meta[2] for meta in meta_rows])
         dialog_lens = [self.data_lens[idx] for idx in batch_ids]
