@@ -79,6 +79,8 @@ def main():
         scope = "model"
         if FLAGS.model == 'cvae':
             model = KgRnnCVAE(config, api, log_dir=None if FLAGS.forward_only else log_dir, scope=scope)
+        elif FLAGS.model == 's2s':
+            model = S2S(config, api, log_dir=None if FLAGS.forward_only else log_dir, scope=scope)
 
         print("Created computation graphs")
         # write config to a file for logging
