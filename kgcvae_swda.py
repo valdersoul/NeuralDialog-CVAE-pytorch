@@ -122,6 +122,8 @@ def main():
             patience = 10  # wait for at least 10 epoch before stop
             dev_loss_threshold = np.inf
             best_dev_loss = np.inf
+            best_dev_losses = None
+            loss_names = None
             for epoch in range(config.max_epoch):
                 print(">> Epoch %d with lr %f" % (epoch, model.learning_rate))
 
@@ -135,7 +137,7 @@ def main():
                 valid_feed.epoch_init(valid_config.batch_size, valid_config.backward_size,
                                       valid_config.step_size, shuffle=False, intra_shuffle=False)
                 model.eval()
-                valid_loss = model.valid_model("ELBO_VALID", valid_feed)
+                valid_loss, loss_names = model.valid_model("ELBO_VALID", valid_feed)
 
                 # test_feed.epoch_init(test_config.batch_size, test_config.backward_size,
                 #                      test_config.step_size, shuffle=True, intra_shuffle=False)
@@ -164,7 +166,7 @@ def main():
                     print("!!Early stop due to run out of patience!!")
                     break
             print("Best validation loss %f" % best_dev_loss)
-            model.print_loss("ELBO_BEST", ["elbo_loss", "bow_loss", "rc_loss", "rc_peplexity", "kl_loss"],
+            model.print_loss("ELBO_BEST", loss_names,
                                      best_dev_losses, "")
             print("Done training")
         else:
