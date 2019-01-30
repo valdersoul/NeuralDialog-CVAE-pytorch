@@ -54,7 +54,7 @@ def main():
 
     # get data set
     #api = SWDADialogCorpus(FLAGS.data_dir, word2vec=FLAGS.word2vec_path, word2vec_dim=config.embed_size)
-    api = PERSONADialogCorpus("data/convai2/train_none_original_no_cands.txt", 'none')
+    api = PERSONADialogCorpus("data/convai2/train_none_original_no_cands.txt", 'none') #, word2vec=FLAGS.word2vec_path, word2vec_dim=config.embed_size)
     dial_corpus = api.get_dialog_corpus()
     #meta_corpus = api.get_meta_corpus()
 

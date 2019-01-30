@@ -26,6 +26,10 @@ class PERSONADialogCorpus(object):
         print("Done loading corpus")
 
     def process(self, path, type):
+        def add_sentence(persona, sentences):
+            persona.append(
+                ["<s>"] + nltk.WordPunctTokenizer().tokenize(sentences[0].split(':')[1].strip().lower()) + ["</s>"])
+
         persona_type = {'self': 'your persona:', 'other': 'partner\'s persona', 'none': 'nopersona', 'both': ['your persona:', 'partner\'s persona']}
         new_dialog = []
         new_utts = []
@@ -38,31 +42,43 @@ class PERSONADialogCorpus(object):
         dialog = []
         utts = [bod_utt]
         persona = []
+        temp = []
+        temp2 = []
 
         for l in lines:
             sentences = l.strip('\n').split('\t')
             flag = int(sentences[0].split()[0]) == 1
 
-            if len(utts) and flag:
+            if len(utts) > 1 and flag:
+                ''' 0 for @partner@ and 1 for @your@ in the dataset'''
                 dialog = [(utt, int(i % 2 == 0),) for i, utt in enumerate(utts)]
+                persona = (temp2, temp)
                 new_dialog.append(dialog)
                 new_utts.extend(utts)
                 all_lenes.extend([len(u) for u in utts])
+                all_lenes.extend([len(u) for u in temp2])
+                all_lenes.extend([len(u) for u in temp])
                 if persona_type[type] is not None:
                     new_persona.append(persona)
-                    all_lenes.extend([len(u) for u in persona])
 
                 dialog = []
                 utts = [bod_utt]
                 persona = []
 
-            if persona_type[type] in sentences[0]:
-                persona.append(
-                    ["<s>"] + nltk.WordPunctTokenizer().tokenize(sentences[0].split(':')[1].strip().lower()) + ["</s>"])
-            else:
-                s = [sentences[0][2:], sentences[1]]
-                lower_utt = [["<s>"] + nltk.WordPunctTokenizer().tokenize(utt.lower()) + ["</s>"] for utt in s]
-                utts += lower_utt
+            if type == 'both':
+                if persona_type[type][0] in sentences[0]:
+                    add_sentence(temp, sentences)
+                    continue
+                elif persona_type[type][1] in sentences[0]:
+                    add_sentence(temp2, sentences)
+                    continue
+            elif persona_type[type] in sentences[0]:
+                add_sentence(persona, sentences)
+                continue
+
+            s = [sentences[0][2:], sentences[1]]
+            lower_utt = [["<s>"] + nltk.WordPunctTokenizer().tokenize(utt.lower()) + ["</s>"] for utt in s]
+            utts += lower_utt
 
         print("Max utt len %d, mean utt len %.2f" % (np.max(all_lenes), float(np.mean(all_lenes))))
         return new_dialog, new_persona, new_utts
