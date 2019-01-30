@@ -342,11 +342,10 @@ class KgRnnCVAE(BaseTFModel):
             prior_mu, prior_logvar = torch.chunk(prior_mulogvar, 2, 1)
 
             # use sampled Z or posterior Z
-            latent_sample = sample_gaussian(prior_mu, prior_logvar)
-            # if self.use_prior:
-            #     latent_sample = sample_gaussian(prior_mu, prior_logvar)
-            # else:
-            #     latent_sample = sample_gaussian(recog_mu, recog_logvar)
+            if self.use_prior:
+                latent_sample = sample_gaussian(prior_mu, prior_logvar)
+            else:
+                latent_sample = sample_gaussian(recog_mu, recog_logvar)
 
         with variable_scope.variable_scope("generationNetwork"):
             gen_inputs = torch.cat([cond_embedding, latent_sample], 1)
