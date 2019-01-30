@@ -26,6 +26,7 @@ tf.app.flags.DEFINE_bool("forward_only", False, "Only do decoding")
 tf.app.flags.DEFINE_bool("save_model", True, "Create checkpoints")
 tf.app.flags.DEFINE_string("test_path", "run1500783422", "the dir to load checkpoint for forward only")
 tf.app.flags.DEFINE_string("model", "s2s", "model used to train/valid")
+tf.app.flags.DEFINE_string("data", "both", "data used to train/valid")
 FLAGS = tf.app.flags.FLAGS
 
 
@@ -52,12 +53,13 @@ def main():
     test_config.batch_size = 1
 
     pp(config)
-
+    data_path = "data/convai2/train_" + FLAGS.data + "_original_no_cands.txt"
     # get data set
     #api = SWDADialogCorpus(FLAGS.data_dir, word2vec=FLAGS.word2vec_path, word2vec_dim=config.embed_size)
-    api = PERSONADialogCorpus("data/convai2/train_none_original_no_cands.txt", 'none', word2vec=FLAGS.word2vec_path, word2vec_dim=config.embed_size)
+    api = PERSONADialogCorpus(data_path, FLAGS.data, word2vec=FLAGS.word2vec_path, word2vec_dim=config.embed_size)
+    print("dataset loaded")
     dial_corpus = api.get_dialog_corpus()
-    #persona_corpus = api.get_persona_corpus()
+    persona_corpus = api.get_persona_corpus()
     #meta_corpus = api.get_meta_corpus()
 
     #train_meta, valid_meta, test_meta = meta_corpus.get("train"), meta_corpus.get("valid"), meta_corpus.get("test")
