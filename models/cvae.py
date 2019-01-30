@@ -883,8 +883,8 @@ class S2S(BaseTFModel):
         if global_t is not None:
             feed_dict["global_t"] = global_t
 
-        #feed_dict = {k: torch.from_numpy(v).cuda() if isinstance(v, np.ndarray) else v for k, v in feed_dict.items()}
-        feed_dict = {k: torch.from_numpy(v) if isinstance(v, np.ndarray) else v for k, v in feed_dict.items()}
+        feed_dict = {k: torch.from_numpy(v).cuda() if isinstance(v, np.ndarray) else v for k, v in feed_dict.items()}
+        #feed_dict = {k: torch.from_numpy(v) if isinstance(v, np.ndarray) else v for k, v in feed_dict.items()}
 
         return feed_dict
 
@@ -914,7 +914,7 @@ class S2S(BaseTFModel):
             global_t += 1
             local_t += 1
             if local_t % (train_feed.num_batch // 10) == 0:
-                kl_w = self.kl_w
+                kl_w = 0
                 self.print_loss("%.2f" % (train_feed.ptr / float(train_feed.num_batch)),
                                 loss_names, [rc_losses, rc_ppls], "kl_w %f" % kl_w)
 
