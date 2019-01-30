@@ -2,7 +2,6 @@
 
 import os
 import time
-import argparse
 
 import numpy as np
 import tensorflow as tf
@@ -26,13 +25,8 @@ tf.app.flags.DEFINE_bool("resume", False, "Resume from previous")
 tf.app.flags.DEFINE_bool("forward_only", False, "Only do decoding")
 tf.app.flags.DEFINE_bool("save_model", True, "Create checkpoints")
 tf.app.flags.DEFINE_string("test_path", "run1500783422", "the dir to load checkpoint for forward only")
+tf.app.flags.DEFINE_string("model", "cvae", "model used to train/valid")
 FLAGS = tf.app.flags.FLAGS
-
-parser = argparse.ArgumentParser()
-parser.add_argument('-p', '--glove_path',       type=str,  default=None)
-parser.add_argument('-m', 'model_type',         type=str,  default="s2s")
-
-args = parser.parse_args()
 
 
 def get_checkpoint_state(ckp_dir):
@@ -61,7 +55,7 @@ def main():
 
     # get data set
     #api = SWDADialogCorpus(FLAGS.data_dir, word2vec=FLAGS.word2vec_path, word2vec_dim=config.embed_size)
-    api = PERSONADialogCorpus("data/convai2/train_none_original_no_cands.txt", 'none', word2vec=args.glove_path, word2vec_dim=config.embed_size) #, word2vec=FLAGS.word2vec_path, word2vec_dim=config.embed_size)
+    api = PERSONADialogCorpus("data/convai2/train_none_original_no_cands.txt", 'none', word2vec=FLAGS.word2vec_path, word2vec_dim=config.embed_size)
     dial_corpus = api.get_dialog_corpus()
     #meta_corpus = api.get_meta_corpus()
 
@@ -83,10 +77,8 @@ def main():
     # begin training
     if True:
         scope = "model"
-        if args.model_type == 'cvae':
+        if FLAGS.model == 'cvae':
             model = KgRnnCVAE(config, api, log_dir=None if FLAGS.forward_only else log_dir, scope=scope)
-        elif args.model_type == 's2s':
-            model = S2S(config, api, log_dir=None if FLAGS.forward_only else log_dir, scope=scope)
 
         print("Created computation graphs")
         # write config to a file for logging
