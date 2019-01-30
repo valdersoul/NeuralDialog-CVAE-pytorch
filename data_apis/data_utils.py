@@ -113,6 +113,8 @@ class PERSONAataLoader(LongDataLoader):
         my_profiles = None
         ot_profiles = None
         vec_out_das = None
+        p_context = None
+        p_lens = None
         # the batch index, the starting point and end point for segment
         b_id, s_id, e_id = cur_grid
 
@@ -164,7 +166,7 @@ class PERSONAataLoader(LongDataLoader):
             vec_floors[b_id, 0:vec_context_lens[b_id]] = floors[b_id]
             vec_context[b_id, 0:vec_context_lens[b_id], :] = np.array(context_utts[b_id])
 
-        return vec_context, vec_context_lens, vec_floors, topics, my_profiles, ot_profiles, vec_outs, vec_out_lens, vec_out_das
+        return vec_context, vec_context_lens, vec_floors, topics, my_profiles, ot_profiles, vec_outs, vec_out_lens, vec_out_das, p_context, p_lens
 
 
 

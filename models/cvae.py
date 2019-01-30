@@ -494,7 +494,7 @@ class KgRnnCVAE(BaseTFModel):
 
         return feed_dict
 
-    def train_model(self, global_t, train_feed, update_limit=5000):
+    def train_model(self, global_t, train_feed, update_limit=5000, use_profile=False):
         elbo_losses = []
         rc_losses = []
         rc_ppls = []
@@ -686,8 +686,11 @@ class S2S(BaseTFModel):
         self.enc_cell = self.get_rnncell(config.cell_type, joint_embedding_size, self.context_cell_size, keep_prob=1.0, num_layer=config.num_layer)
         cond_embedding_size = config.topic_embed_size + self.context_cell_size
 
+        if config.use_profile:
+            dec_inputs_size = cond_embedding_size * 2
+        else:
+            dec_inputs_size = cond_embedding_size
 
-        dec_inputs_size = cond_embedding_size * 2
         # Decoder
         if config.num_layer > 1:
             self.dec_init_state_net = nn.ModuleList(
@@ -697,8 +700,6 @@ class S2S(BaseTFModel):
 
         # decoder
         dec_input_embedding_size = self.embed_size
-        if self.use_hcf:
-            dec_input_embedding_size += 30
         self.dec_cell = self.get_rnncell(config.cell_type, dec_input_embedding_size, self.dec_cell_size,
                                          config.keep_prob, config.num_layer)
         self.dec_cell_proj = nn.Linear(self.dec_cell_size, self.vocab_size)
@@ -756,7 +757,8 @@ class S2S(BaseTFModel):
 
             # reshape input into dialogs
             input_embedding = input_embedding.view(-1, max_dialog_len, sent_size)
-            profile_embedding = profile_embedding.view(-1, max_dialog_len, p_sent_size)
+            if use_profile:
+                profile_embedding = profile_embedding.view(-1, max_dialog_len, p_sent_size)
             if self.keep_prob < 1.0:
                 input_embedding = F.dropout(input_embedding, 1 - self.keep_prob, self.training)
 
@@ -764,10 +766,11 @@ class S2S(BaseTFModel):
             floor_one_hot = self.floors.new_zeros((self.floors.numel(), 2), dtype=torch.float)
             floor_one_hot.data.scatter_(1, self.floors.view(-1,1), 1)
             floor_one_hot = floor_one_hot.view(-1, max_dialog_len, 2)
-            profile_post = torch.zeros(floor_one_hot.size())
-
             joint_embedding_input = torch.cat([input_embedding, floor_one_hot], 2)
-            joint_embedding_profile = torch.cat([profile_embedding, profile_post], 2)
+            if use_profile:
+                profile_post = torch.zeros(floor_one_hot.size())
+                joint_embedding_profile = torch.cat([profile_embedding, profile_post], 2)
+
 
         with variable_scope.variable_scope("contextRNN"):
             # and enc_last_state will be same as the true last state
@@ -777,20 +780,26 @@ class S2S(BaseTFModel):
                 joint_embedding_input,
                 sequence_length=self.context_lens)
 
-            _, enc_last_state_profile = utils.dynamic_rnn(
-                self.enc_cell,
-                joint_embedding_input,
-                sequence_length=self.profile_lens)
+            if use_profile:
+                _, enc_last_state_profile = utils.dynamic_rnn(
+                    self.enc_cell,
+                    joint_embedding_input,
+                    sequence_length=self.profile_lens)
 
             if self.num_layer > 1:
                 enc_last_state = torch.cat([_ for _ in torch.unbind(enc_last_state)], 1)
-                enc_last_state_profile = torch.cat([_ for _ in torch.unbind(enc_last_state_profile)], 1)
+                if use_profile:
+                    enc_last_state_profile = torch.cat([_ for _ in torch.unbind(enc_last_state_profile)], 1)
             else:
                 enc_last_state = enc_last_state.squeeze(0)
-                enc_last_state_profile = enc_last_state_profile.squeeze(0)
+                if use_profile:
+                    enc_last_state_profile = enc_last_state_profile.squeeze(0)
 
         with variable_scope.variable_scope("generationNetwork"):
-            dec_inputs = torch.cat([enc_last_state, enc_last_state_profile], 1)
+            if use_profile:
+                dec_inputs = torch.cat([enc_last_state, enc_last_state_profile], 1)
+            else:
+                dec_inputs = enc_last_state
 
             # Decoder
             if self.num_layer > 1:
@@ -854,7 +863,7 @@ class S2S(BaseTFModel):
                 # self.est_marginal = torch.mean(rc_loss + bow_loss - self.log_p_z + self.log_q_z_xy)
 
     def batch_2_feed(self, batch, global_t, use_prior, repeat=1):
-        context, context_lens, floors, topics, my_profiles, ot_profiles, outputs, output_lens, output_das = batch
+        context, context_lens, floors, topics, my_profiles, ot_profiles, outputs, output_lens, output_das, p_context, p_lens = batch
         feed_dict = {"input_contexts": context, "context_lens":context_lens,
                      "floors": floors, "topics":topics, "my_profile": my_profiles,
                      "ot_profile": ot_profiles, "output_tokens": outputs,
@@ -874,8 +883,8 @@ class S2S(BaseTFModel):
         if global_t is not None:
             feed_dict["global_t"] = global_t
 
-        feed_dict = {k: torch.from_numpy(v).cuda() if isinstance(v, np.ndarray) else v for k, v in feed_dict.items()}
-        #feed_dict = {k: torch.from_numpy(v) if isinstance(v, np.ndarray) else v for k, v in feed_dict.items()}
+        #feed_dict = {k: torch.from_numpy(v).cuda() if isinstance(v, np.ndarray) else v for k, v in feed_dict.items()}
+        feed_dict = {k: torch.from_numpy(v) if isinstance(v, np.ndarray) else v for k, v in feed_dict.items()}
 
         return feed_dict
 
@@ -895,7 +904,7 @@ class S2S(BaseTFModel):
             self.forward(feed_dict, use_profile=use_profile, mode='train')
             rc_loss, rc_ppl = self.avg_rc_loss.item(), self.rc_ppl.item()
 
-            self.optimize(self.aug_elbo)
+            self.optimize(self.avg_rc_loss)
             # print(elbo_loss, bow_loss, rc_loss, rc_ppl, kl_loss)
             for summary in self.summary_op:
                 self.train_summary_writer.add_summary(summary, global_t)
@@ -918,7 +927,7 @@ class S2S(BaseTFModel):
 
         return global_t, avg_losses[0]
 
-    def valid_model(self, name, valid_feed):
+    def valid_model(self, name, valid_feed, use_profile=False):
         rc_losses = []
         rc_ppls = []
 
@@ -928,7 +937,7 @@ class S2S(BaseTFModel):
                 break
             feed_dict = self.batch_2_feed(batch, None, use_prior=False, repeat=1)
             with torch.no_grad():
-                self.forward(feed_dict, mode='valid')
+                self.forward(feed_dict, use_profile=use_profile, mode='valid')
             rc_loss, rc_ppl = self.avg_rc_loss.item(), self.rc_ppl.item()
             rc_losses.append(rc_loss)
             rc_ppls.append(rc_ppl)

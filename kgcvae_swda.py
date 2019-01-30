@@ -25,7 +25,7 @@ tf.app.flags.DEFINE_bool("resume", False, "Resume from previous")
 tf.app.flags.DEFINE_bool("forward_only", False, "Only do decoding")
 tf.app.flags.DEFINE_bool("save_model", True, "Create checkpoints")
 tf.app.flags.DEFINE_string("test_path", "run1500783422", "the dir to load checkpoint for forward only")
-tf.app.flags.DEFINE_string("model", "cvae", "model used to train/valid")
+tf.app.flags.DEFINE_string("model", "s2s", "model used to train/valid")
 FLAGS = tf.app.flags.FLAGS
 
 
@@ -57,12 +57,14 @@ def main():
     #api = SWDADialogCorpus(FLAGS.data_dir, word2vec=FLAGS.word2vec_path, word2vec_dim=config.embed_size)
     api = PERSONADialogCorpus("data/convai2/train_none_original_no_cands.txt", 'none', word2vec=FLAGS.word2vec_path, word2vec_dim=config.embed_size)
     dial_corpus = api.get_dialog_corpus()
+    #persona_corpus = api.get_persona_corpus()
     #meta_corpus = api.get_meta_corpus()
 
     #train_meta, valid_meta, test_meta = meta_corpus.get("train"), meta_corpus.get("valid"), meta_corpus.get("test")
     #train_dial, valid_dial, test_dial = dial_corpus.get("train"), dial_corpus.get("valid"), dial_corpus.get("test")
 
     train_dial, valid_dial = dial_corpus.get("train"), dial_corpus.get("valid")
+    #train_persona, valid_persona = persona_corpus.get("train"), persona_corpus.get("valid")
 
     # convert to numeric input outputs that fits into TF models
     train_feed = PERSONAataLoader("Train", train_dial, None, config)
@@ -125,7 +127,7 @@ def main():
                 if train_feed.num_batch is None or train_feed.ptr >= train_feed.num_batch:
                     train_feed.epoch_init(config.batch_size, config.backward_size,
                                           config.step_size, shuffle=True)
-                global_t, train_loss = model.train_model(global_t, train_feed, update_limit=config.update_limit)
+                global_t, train_loss = model.train_model(global_t, train_feed, update_limit=config.update_limit, use_profile=config.use_profile)
 
                 # begin validation
                 valid_feed.epoch_init(valid_config.batch_size, valid_config.backward_size,

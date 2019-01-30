@@ -153,7 +153,7 @@ class PERSONADialogCorpus(object):
             for persona in data:
                 temp = []
                 # convert utterance and feature into numeric numbers
-                for profile in persona:
+                for person in persona:
                     temp.append([self.rev_vocab.get(t, self.unk_id) for t in profile])
                 results.append(temp)
             return results
