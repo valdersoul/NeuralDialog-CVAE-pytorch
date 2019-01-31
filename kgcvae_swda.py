@@ -54,21 +54,21 @@ def main():
     test_config.dec_keep_prob = 1.0
     test_config.batch_size = 1
 
+    train_persona = None
+    valid_persona = None
+
     pp(config)
     data_path = "data/convai2/train_" + FLAGS.data + "_original_no_cands.txt"
     # get data set
     #api = SWDADialogCorpus(FLAGS.data_dir, word2vec=FLAGS.word2vec_path, word2vec_dim=config.embed_size)
     api = PERSONADialogCorpus(data_path, FLAGS.data, word2vec=FLAGS.word2vec_path, word2vec_dim=config.embed_size)
     print("dataset loaded")
+    
     dial_corpus = api.get_dialog_corpus()
-    persona_corpus = api.get_persona_corpus()
-    #meta_corpus = api.get_meta_corpus()
-
-    #train_meta, valid_meta, test_meta = meta_corpus.get("train"), meta_corpus.get("valid"), meta_corpus.get("test")
-    #train_dial, valid_dial, test_dial = dial_corpus.get("train"), dial_corpus.get("valid"), dial_corpus.get("test")
-
     train_dial, valid_dial = dial_corpus.get("train"), dial_corpus.get("valid")
-    train_persona, valid_persona = persona_corpus.get("train"), persona_corpus.get("valid")
+    if config.use_profile:
+        persona_corpus = api.get_persona_corpus()
+        train_persona, valid_persona = persona_corpus.get("train"), persona_corpus.get("valid")
 
     # convert to numeric input outputs that fits into TF models
     train_feed = PERSONAataLoader("Train", train_dial, train_persona, config)
