@@ -70,7 +70,7 @@ class PERSONADialogCorpus(object):
             if type == 'both':
                 if not " persona:" in sentences[0]:
                     s = [sentences[0][2:], sentences[1]]
-                    lower_utt = [["<s>"] + nltk.WordPunctTokenizer().tokenize(utt.lower()) + ["</s>"] for utt in s]
+                    lower_utt = [["<s>"] + nltk.WordPunctTokenizer().tokenize(utt.lower().replace('__silence__', '')) + ["</s>"] for utt in s]
                     utts += lower_utt
                     continue
                 if persona_type[type][0] in sentences[0]:
