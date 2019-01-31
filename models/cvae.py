@@ -179,7 +179,7 @@ class KgRnnCVAE(BaseTFModel):
         # priorNetwork
         # P(XYZ)=P(Z|X)P(X)P(Y|X,Z)
         self.priorNet_mulogvar = nn.Sequential(
-            nn.Linear(cond_embedding_size, np.maximum(config.latent_size * 2, 100)),
+            nn.Linear(self.context_cell_size, np.maximum(config.latent_size * 2, 100)),
             nn.Tanh(),
             nn.Linear(np.maximum(config.latent_size * 2, 100), config.latent_size * 2))
 
