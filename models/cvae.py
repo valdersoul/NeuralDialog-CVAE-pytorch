@@ -730,7 +730,8 @@ class S2S(BaseTFModel):
             setattr(self, k, v)
 
         max_dialog_len = self.input_contexts.size(1)
-        max_profile_len = self.profile_contexts.size(1)
+        if use_profile:
+            max_profile_len = self.profile_contexts.size(1)
 
         with variable_scope.variable_scope("wordEmbedding"):
 
