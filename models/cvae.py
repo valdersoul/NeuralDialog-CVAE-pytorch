@@ -610,7 +610,7 @@ class KgRnnCVAE(BaseTFModel):
                                      [elbo_losses, bow_losses, rc_losses, rc_ppls, kl_losses], "")
         return avg_losses, ["elbo_loss", "bow_loss", "rc_loss", "rc_peplexity", "kl_loss"]
 
-    def test_model(self, test_feed, num_batch=None, repeat=5, dest=sys.stdout):
+    def test_model(self, test_feed, num_batch=None, repeat=5, dest=sys.stdout, use_profile=False):
         local_t = 0
         recall_bleus = []
         prec_bleus = []
@@ -621,7 +621,7 @@ class KgRnnCVAE(BaseTFModel):
                 break
             feed_dict = self.batch_2_feed(batch, None, use_prior=True, repeat=repeat)
             with torch.no_grad():
-                self.forward(feed_dict, mode='test')
+                self.forward(feed_dict, mode='test', use_profile=use_profile)
             word_outs, da_logits = self.dec_out_words.cpu().numpy(), self.da_logits.cpu().numpy()
             sample_words = np.split(word_outs, repeat, axis=0)
             sample_das = np.split(da_logits, repeat, axis=0)
