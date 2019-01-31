@@ -769,7 +769,7 @@ class S2S(BaseTFModel):
             floor_one_hot = floor_one_hot.view(-1, max_dialog_len, 2)
             joint_embedding_input = torch.cat([input_embedding, floor_one_hot], 2)
             if use_profile:
-                profile_post = torch.zeros(floor_one_hot.size()).cuda()
+                profile_post = torch.zeros(floor_one_hot.size()[0], max_profile_len, 2).cuda()
                 joint_embedding_profile = torch.cat([profile_embedding, profile_post], 2)
 
 
