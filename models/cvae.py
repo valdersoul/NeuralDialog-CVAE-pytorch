@@ -649,7 +649,7 @@ class KgRnnCVAE(BaseTFModel):
                     dest.write("Src %d-%d: %s\n" % (t_id, true_floor[b_id, t_id], src_str))
                 for p_id in range(profile.shape[1]):
                     profile_str = " ".join([self.vocab[e] for e in profile[b_id, p_id].tolist() if e != 0])
-                    dest.write("Profile %d-%d: %s\n" % (p_id, true_floor[b_id, -1], profile_str))
+                    dest.write("Profile %d-%d: %s\n" % (p_id, 1, profile_str))
                 # print the true outputs
                 true_tokens = [self.vocab[e] for e in true_outs[b_id].tolist() if e not in [0, self.eos_id, self.go_id]]
                 true_str = " ".join(true_tokens).replace(" ' ", "'")
@@ -1028,7 +1028,7 @@ class S2S(BaseTFModel):
                     dest.write("Src %d-%d: %s\n" % (t_id, true_floor[b_id, t_id], src_str))
                 for p_id in range(profile.shape[1]):
                     profile_str = " ".join([self.vocab[e] for e in profile[b_id, p_id].tolist() if e != 0])
-                    dest.write("Profile %d-%d: %s\n" % (p_id, true_floor[b_id, -1], profile_str))
+                    dest.write("Profile %d-%d: %s\n" % (p_id, 1, profile_str))
                 # print the true outputs
                 true_tokens = [self.vocab[e] for e in true_outs[b_id].tolist() if e not in [0, self.eos_id, self.go_id]]
                 true_str = " ".join(true_tokens).replace(" ' ", "'")
