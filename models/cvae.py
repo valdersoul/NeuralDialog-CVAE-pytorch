@@ -548,7 +548,7 @@ class KgRnnCVAE(BaseTFModel):
             if update_limit is not None and local_t >= update_limit:
                 break
             feed_dict = self.batch_2_feed(batch, global_t, use_prior=False)
-            self.forward(feed_dict, mode='train')
+            self.forward(feed_dict, mode='train', use_profile=use_profile)
             elbo_loss, bow_loss, rc_loss, rc_ppl, kl_loss = self.elbo.item(),\
                                                             self.avg_bow_loss.item(),\
                                                             self.avg_rc_loss.item(),\
@@ -581,7 +581,7 @@ class KgRnnCVAE(BaseTFModel):
 
         return global_t, avg_losses[0]
 
-    def valid_model(self, name, valid_feed):
+    def valid_model(self, name, valid_feed, use_profile=False):
         elbo_losses = []
         rc_losses = []
         rc_ppls = []
@@ -594,7 +594,7 @@ class KgRnnCVAE(BaseTFModel):
                 break
             feed_dict = self.batch_2_feed(batch, None, use_prior=False, repeat=1)
             with torch.no_grad():
-                self.forward(feed_dict, mode='valid')
+                self.forward(feed_dict, mode='valid',  use_profile=use_profile)
             elbo_loss, bow_loss, rc_loss, rc_ppl, kl_loss = self.elbo.item(),\
                                                             self.avg_bow_loss.item(),\
                                                             self.avg_rc_loss.item(),\
