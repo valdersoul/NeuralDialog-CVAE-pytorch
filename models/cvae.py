@@ -632,6 +632,7 @@ class KgRnnCVAE(BaseTFModel):
             true_srcs = feed_dict["input_contexts"].cpu().numpy()
             true_src_lens = feed_dict["context_lens"].cpu().numpy()
             true_outs = feed_dict["output_tokens"].cpu().numpy()
+            profile = feed_dict["profile_contexts"].cpu().numpy()
             #true_topics = feed_dict["topics"].cpu().numpy()
             #true_das = feed_dict["output_das"].cpu().numpy()
             local_t += 1
@@ -642,11 +643,13 @@ class KgRnnCVAE(BaseTFModel):
 
             for b_id in range(test_feed.batch_size):
                 # print the dialog context
-                #dest.write("Batch %d index %d of topic %s\n" % (local_t, b_id, self.topic_vocab[true_topics[b_id]]))
                 start = np.maximum(0, true_src_lens[b_id]-5)
                 for t_id in range(start, true_srcs.shape[1], 1):
                     src_str = " ".join([self.vocab[e] for e in true_srcs[b_id, t_id].tolist() if e != 0])
                     dest.write("Src %d-%d: %s\n" % (t_id, true_floor[b_id, t_id], src_str))
+                for p_id in range(profile.shape[1]):
+                    profile_str = " ".join([self.vocab[e] for e in profile[b_id, p_id].tolist() if e != 0])
+                    dest.write("Profile %d-%d: %s\n" % (p_id, true_floor[b_id, p_id], profile_str))
                 # print the true outputs
                 true_tokens = [self.vocab[e] for e in true_outs[b_id].tolist() if e not in [0, self.eos_id, self.go_id]]
                 true_str = " ".join(true_tokens).replace(" ' ", "'")
