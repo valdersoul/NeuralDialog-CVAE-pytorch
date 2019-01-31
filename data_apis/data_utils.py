@@ -115,6 +115,7 @@ class PERSONAataLoader(LongDataLoader):
         vec_out_das = None
         p_context = []
         p_lens = []
+        p_rows = []
         vec_profile_lens = None
         vec_profile = None
 
