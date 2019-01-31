@@ -404,7 +404,7 @@ class KgRnnCVAE(BaseTFModel):
                                                                     end_of_sequence_id=self.eos_id,
                                                                     maximum_length=self.max_utt_len,
                                                                     num_decoder_symbols=self.vocab_size,
-                                                                    context_vector=enc_last_state_profile,
+                                                                    context_vector=enc_last_state_profile if use_profile else None,
                                                                     decode_type='greedy')
                 # print(final_context_state)
             else:
@@ -423,7 +423,7 @@ class KgRnnCVAE(BaseTFModel):
                 dec_input_embedding = F.dropout(dec_input_embedding, 1 - self.keep_prob, self.training)
 
                 dec_outs, _, final_context_state =  decoder_fn_lib.train_loop(self.dec_cell, self.dec_cell_proj, dec_input_embedding, 
-                    init_state=dec_init_state, context_vector=enc_last_state_profile if self.use_hcf else None, sequence_length=dec_seq_lens)
+                    init_state=dec_init_state, context_vector=enc_last_state_profile if use_profile else None, sequence_length=dec_seq_lens)
 
             # dec_outs, _, final_context_state = dynamic_rnn_decoder(dec_cell, loop_func, inputs=dec_input_embedding, sequence_length=dec_seq_lens)
             if final_context_state is not None:
