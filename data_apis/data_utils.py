@@ -177,8 +177,8 @@ class PERSONAataLoader(LongDataLoader):
         for b_id in range(self.batch_size):
             vec_outs[b_id, 0:vec_out_lens[b_id]] = out_utts[b_id]
             vec_floors[b_id, 0:vec_context_lens[b_id]] = floors[b_id]
+            vec_context[b_id, 0:vec_context_lens[b_id], :] = np.array(context_utts[b_id])
             if self.persona_data:
-                vec_context[b_id, 0:vec_context_lens[b_id], :] = np.array(context_utts[b_id])
                 vec_profile[b_id, 0:vec_profile_lens[b_id], :] = np.array(p_context[b_id])
 
         return vec_context, vec_context_lens, vec_floors, topics, my_profiles, ot_profiles, vec_outs, vec_out_lens, vec_out_das, vec_profile, vec_profile_lens
