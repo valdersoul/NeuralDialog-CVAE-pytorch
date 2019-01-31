@@ -147,8 +147,9 @@ class PERSONAataLoader(LongDataLoader):
                 floors.append([int(floor==out_floor) for utt, floor in in_row])
                 context_lens.append(len(cut_row) - 1)
 
-                p_context.append([self.pad_to(utt) for utt in p_rows[i][out_floor]])
-                p_lens.append(len(p_rows[i][out_floor]))
+                if p_rows:
+                    p_context.append([self.pad_to(utt) for utt in p_rows[i][out_floor]])
+                    p_lens.append(len(p_rows[i][out_floor]))
 
                 out_utt = self.pad_to(out_utt, do_pad=False)
                 out_utts.append(out_utt)
