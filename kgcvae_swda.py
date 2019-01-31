@@ -39,6 +39,8 @@ def get_checkpoint_state(ckp_dir):
 def main():
     # config for training
     config = Config()
+    if FLAGS.data == 'none':
+        config.use_profile = False
 
     # config for validation
     valid_config = Config()
