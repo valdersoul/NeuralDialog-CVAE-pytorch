@@ -167,7 +167,7 @@ class KgRnnCVAE(BaseTFModel):
 
         self.attribute_fc1 = nn.Sequential(nn.Linear(config.da_embed_size, 30), nn.Tanh())
 
-        cond_embedding_size = config.topic_embed_size + self.context_cell_size #+ 4 + 4
+        cond_embedding_size = self.context_cell_size * 2 if config.use_profile else self.context_cell_size
 
         # recognitionNetwork
         recog_input_size = cond_embedding_size + output_embedding_size
@@ -243,13 +243,13 @@ class KgRnnCVAE(BaseTFModel):
         for param_group in self.optimizer.param_groups:
             param_group['lr'] = self.learning_rate
 
-    def forward(self, feed_dict, mode='train'):
+    def forward(self, feed_dict, mode='train', use_profile=False):
         for k, v in feed_dict.items():
             setattr(self, k, v)
 
         max_dialog_len = self.input_contexts.size(1)
-        max_out_len = self.output_tokens.size(1)
-        batch_size = self.input_contexts.size(0)
+        if use_profile:
+            max_profile_len = self.profile_contexts.size(1)
 
         # with variable_scope.variable_scope("topicEmbedding"):
         #     topic_embedding = self.t_embedding(self.topics)
@@ -264,30 +264,37 @@ class KgRnnCVAE(BaseTFModel):
             input_embedding = self.embedding(self.input_contexts)
             #input_embedding = input_embedding.view(-1, self.max_utt_len, self.embed_size)
             output_embedding = self.embedding(self.output_tokens)
+            if use_profile:
+                self.profile_contexts = self.profile_contexts.view(-1, self.max_utt_len)
+                profile_embedding = self.embedding(self.profile_contexts)
 
-            # print(self.input_contexts.numel())
-            # print((self.input_contexts.view(-1, self.max_utt_len) > 0)[:10])
-            # print((torch.max(torch.abs(input_embedding), 2)[0] > 0)[:10])
-            #print(self.embedding.weight.data[1:2])
             assert ((self.input_contexts.view(-1, self.max_utt_len) > 0).float() - (torch.max(torch.abs(input_embedding), 2)[0] > 0).float()).abs().sum().item() == 0,\
                 str(((self.input_contexts.view(-1, self.max_utt_len) > 0).float() - (torch.max(torch.abs(input_embedding), 2)[0] > 0).float()).abs().sum().item())
 
             if self.sent_type == "bow":
                 input_embedding, sent_size = get_bow(input_embedding)
                 output_embedding, _ = get_bow(output_embedding)
+                if use_profile:
+                    profile_embedding, p_sent_size = get_bow(profile_embedding)
 
             elif self.sent_type == "rnn":
                 input_embedding, sent_size = get_rnn_encode(input_embedding, self.sent_cell, self.keep_prob, scope="sent_rnn")
                 output_embedding, _ = get_rnn_encode(output_embedding, self.sent_cell, self.output_lens,
                                                      self.keep_prob, scope="sent_rnn", reuse=True)
+                if use_profile:
+                    profile_embedding, p_sent_size = get_rnn_encode(profile_embedding, self.sent_cell, self.keep_prob, scope="sent_rnn")
             elif self.sent_type == "bi_rnn":
                 input_embedding, sent_size = get_bi_rnn_encode(input_embedding, self.bi_sent_cell, scope="sent_bi_rnn")
                 output_embedding, _ = get_bi_rnn_encode(output_embedding, self.bi_sent_cell, self.output_lens, scope="sent_bi_rnn", reuse=True)
+                if use_profile:
+                    profile_embedding, p_sent_size = get_bi_rnn_encode(profile_embedding, self.bi_sent_cell, scope="sent_bi_rnn")
             else:
                 raise ValueError("Unknown sent_type. Must be one of [bow, rnn, bi_rnn]")
 
             # reshape input into dialogs
             input_embedding = input_embedding.view(-1, max_dialog_len, sent_size)
+            if use_profile:
+                profile_embedding = profile_embedding.view(-1, max_profile_len, p_sent_size)
             if self.keep_prob < 1.0:
                 input_embedding = F.dropout(input_embedding, 1 - self.keep_prob, self.training)
 
@@ -297,6 +304,9 @@ class KgRnnCVAE(BaseTFModel):
             floor_one_hot = floor_one_hot.view(-1, max_dialog_len, 2)
 
             joint_embedding = torch.cat([input_embedding, floor_one_hot], 2)
+            if use_profile:
+                profile_post = torch.zeros(floor_one_hot.size()[0], max_profile_len, 2).cuda()
+                joint_embedding_profile = torch.cat([profile_embedding, profile_post], 2)
 
         with variable_scope.variable_scope("contextRNN"):
             # and enc_last_state will be same as the true last state
@@ -305,19 +315,21 @@ class KgRnnCVAE(BaseTFModel):
                 self.enc_cell,
                 joint_embedding,
                 sequence_length=self.context_lens)
-            # __, enc_last_state_ = utils.dynamic_rnn_2(
-            #     self.enc_cell,
-            #     joint_embedding,
-            #     sequence_length=self.context_lens)
-            # self.enc_cell.train()
 
-            # print((_-__).abs().sum())
-            # print((enc_last_state-enc_last_state_).abs().sum())
+            if use_profile:
+                _, enc_last_state_profile = utils.dynamic_rnn(
+                    self.enc_cell,
+                    joint_embedding_profile,
+                    sequence_length=self.profile_lens)
 
             if self.num_layer > 1:
                 enc_last_state = torch.cat([_ for _ in torch.unbind(enc_last_state)], 1)
+                if use_profile:
+                    enc_last_state_profile = torch.cat([_ for _ in torch.unbind(enc_last_state_profile)], 1)
             else:
                 enc_last_state = enc_last_state.squeeze(0)
+                if use_profile:
+                    enc_last_state_profile = enc_last_state_profile.squeeze(0)
 
         # combine with other attributes
         if self.use_hcf:
@@ -326,7 +338,7 @@ class KgRnnCVAE(BaseTFModel):
 
         #cond_list = [topic_embedding, self.my_profile, self.ot_profile, enc_last_state]
         #cond_embedding = torch.cat(cond_list, 1)
-        cond_embedding = enc_last_state
+        cond_embedding = torch.cat([enc_last_state, enc_last_state_profile], 1) if use_profile else enc_last_state
 
         with variable_scope.variable_scope("recognitionNetwork"):
             if self.use_hcf:
@@ -468,13 +480,39 @@ class KgRnnCVAE(BaseTFModel):
                 self.log_q_z_xy = norm_log_liklihood(latent_sample, recog_mu, recog_logvar)
                 self.est_marginal = torch.mean(rc_loss + bow_loss - self.log_p_z + self.log_q_z_xy)
 
+    # def batch_2_feed(self, batch, global_t, use_prior, repeat=1):
+    #     context, context_lens, floors, topics, my_profiles, ot_profiles, outputs, output_lens, output_das, p_context, p_lens = batch
+    #     feed_dict = {"input_contexts": context, "context_lens":context_lens,
+    #                  "floors": floors, "topics":topics, "my_profile": my_profiles,
+    #                  "ot_profile": ot_profiles, "output_tokens": outputs,
+    #                  "output_das": output_das, "output_lens": output_lens,
+    #                  "use_prior": use_prior}
+    #     if repeat > 1:
+    #         tiled_feed_dict = {}
+    #         for key, val in feed_dict.items():
+    #             if key == "use_prior":
+    #                 tiled_feed_dict[key] = val
+    #                 continue
+    #             multipliers = [1]*len(val.shape)
+    #             multipliers[0] = repeat
+    #             tiled_feed_dict[key] = np.tile(val, multipliers)
+    #         feed_dict = tiled_feed_dict
+    #
+    #     if global_t is not None:
+    #         feed_dict["global_t"] = global_t
+    #
+    #     feed_dict = {k: torch.from_numpy(v).cuda() if isinstance(v, np.ndarray) else v for k, v in feed_dict.items()}
+    #     #feed_dict = {k: torch.from_numpy(v) if isinstance(v, np.ndarray) else v for k, v in feed_dict.items()}
+    #
+    #     return feed_dict
+
     def batch_2_feed(self, batch, global_t, use_prior, repeat=1):
         context, context_lens, floors, topics, my_profiles, ot_profiles, outputs, output_lens, output_das, p_context, p_lens = batch
         feed_dict = {"input_contexts": context, "context_lens":context_lens,
                      "floors": floors, "topics":topics, "my_profile": my_profiles,
                      "ot_profile": ot_profiles, "output_tokens": outputs,
                      "output_das": output_das, "output_lens": output_lens,
-                     "use_prior": use_prior}
+                     "use_prior": use_prior, "profile_contexts": p_context, "profile_lens":p_lens}
         if repeat > 1:
             tiled_feed_dict = {}
             for key, val in feed_dict.items():
@@ -489,10 +527,8 @@ class KgRnnCVAE(BaseTFModel):
         if global_t is not None:
             feed_dict["global_t"] = global_t
 
-        feed_dict = {k: torch.from_numpy(v).cuda() if isinstance(v, np.ndarray) else v for k, v in feed_dict.items()}
-        #feed_dict = {k: torch.from_numpy(v) if isinstance(v, np.ndarray) else v for k, v in feed_dict.items()}
-
-        return feed_dict
+        #feed_dict = {k: torch.from_numpy(v).cuda() if isinstance(v, np.ndarray) else v for k, v in feed_dict.items()}
+        feed_dict = {k: torch.from_numpy(v) if isinstance(v, np.ndarray) else v for k, v in feed_dict.items()}
 
     def train_model(self, global_t, train_feed, update_limit=5000, use_profile=False):
         elbo_losses = []
@@ -885,8 +921,8 @@ class S2S(BaseTFModel):
         if global_t is not None:
             feed_dict["global_t"] = global_t
 
-        feed_dict = {k: torch.from_numpy(v).cuda() if isinstance(v, np.ndarray) else v for k, v in feed_dict.items()}
-        #feed_dict = {k: torch.from_numpy(v) if isinstance(v, np.ndarray) else v for k, v in feed_dict.items()}
+        #feed_dict = {k: torch.from_numpy(v).cuda() if isinstance(v, np.ndarray) else v for k, v in feed_dict.items()}
+        feed_dict = {k: torch.from_numpy(v) if isinstance(v, np.ndarray) else v for k, v in feed_dict.items()}
 
         return feed_dict
 

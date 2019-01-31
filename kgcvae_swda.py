@@ -26,7 +26,7 @@ tf.app.flags.DEFINE_bool("forward_only", False, "Only do decoding")
 tf.app.flags.DEFINE_bool("save_model", True, "Create checkpoints")
 tf.app.flags.DEFINE_string("test_path", "run1500783422", "the dir to load checkpoint for forward only")
 tf.app.flags.DEFINE_string("model", "s2s", "model used to train/valid")
-tf.app.flags.DEFINE_string("data", "both", "data used to train/valid")
+tf.app.flags.DEFINE_string("data", "none", "data used to train/valid")
 FLAGS = tf.app.flags.FLAGS
 
 
@@ -116,7 +116,7 @@ def main():
         # 
 
         # turn to cuda
-        model.cuda()
+        #model.cuda()
 
         if not FLAGS.forward_only:
             dm_checkpoint_path = os.path.join(ckp_dir, model.__class__.__name__+ "-%d.pth")
