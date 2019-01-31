@@ -7,7 +7,7 @@ import nltk
 
 class PERSONADialogCorpus(object):
 
-    def __init__(self, corpus_path, type, max_vocab_cnt=10000, word2vec=None, word2vec_dim=None):
+    def __init__(self, corpus_path, type, max_vocab_cnt=20000, word2vec=None, word2vec_dim=None):
         """
         :param corpus_path: the folder that contains the SWDA dialog corpus
         """
@@ -64,6 +64,8 @@ class PERSONADialogCorpus(object):
                 dialog = []
                 utts = [bod_utt]
                 persona = []
+                temp2 = []
+                temp = []
 
             if type == 'both':
                 if not " persona:" in sentences[0]:
@@ -155,12 +157,17 @@ class PERSONADialogCorpus(object):
 
         def _to_id_corpus(data):
             results = []
+            persona_temp = []
             for persona in data:
                 temp = []
                 # convert utterance and feature into numeric numbers
                 for person in persona:
-                    temp.append([self.rev_vocab.get(t, self.unk_id) for t in profile])
-                results.append(temp)
+                    for profile in person:
+                        temp.append([self.rev_vocab.get(t, self.unk_id) for t in profile])
+                    persona_temp.append(temp)
+                    temp = []
+                results.append(persona_temp)
+                persona_temp = []
             return results
 
         id_train = _to_id_corpus(self.train_corpus[self.persona_id])

@@ -66,11 +66,11 @@ def main():
     #train_dial, valid_dial, test_dial = dial_corpus.get("train"), dial_corpus.get("valid"), dial_corpus.get("test")
 
     train_dial, valid_dial = dial_corpus.get("train"), dial_corpus.get("valid")
-    #train_persona, valid_persona = persona_corpus.get("train"), persona_corpus.get("valid")
+    train_persona, valid_persona = persona_corpus.get("train"), persona_corpus.get("valid")
 
     # convert to numeric input outputs that fits into TF models
-    train_feed = PERSONAataLoader("Train", train_dial, None, config)
-    valid_feed = PERSONAataLoader("Valid", valid_dial, None, config)
+    train_feed = PERSONAataLoader("Train", train_dial, train_persona, config)
+    valid_feed = PERSONAataLoader("Valid", valid_dial, valid_persona, config)
     #test_feed = SWDADataLoader("Test", test_dial, test_meta, config)
 
     if FLAGS.forward_only or FLAGS.resume:

@@ -53,7 +53,7 @@ class KgCVAEConfig(object):
 class ProfileBaselineConfig(object):
     description= None
     use_hcf = False  # use dialog act in training (if turn off kgCVAE -> CVAE)
-    use_profile = False
+    use_profile = True
     update_limit = 3000  # the number of mini-batch before evaluating the model
 
     # how to encode utterance.

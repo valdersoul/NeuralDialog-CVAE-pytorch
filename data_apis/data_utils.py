@@ -88,10 +88,10 @@ class LongDataLoader(object):
 
 
 class PERSONAataLoader(LongDataLoader):
-    def __init__(self, name, data, meta_data, config):
+    def __init__(self, name, data, persona_data, config):
         self.name = name
         self.data = data
-        self.meta_data = meta_data
+        self.persona_data = persona_data
         self.data_size = len(data)
         self.data_lens = all_lens = [len(line) for line in self.data]
         self.max_utt_size = config.max_utt_len
@@ -113,23 +113,24 @@ class PERSONAataLoader(LongDataLoader):
         my_profiles = None
         ot_profiles = None
         vec_out_das = None
-        p_context = None
-        p_lens = None
+        p_context = []
+        p_lens = []
         # the batch index, the starting point and end point for segment
         b_id, s_id, e_id = cur_grid
 
         batch_ids = self.batch_indexes[b_id]
         rows = [self.data[idx] for idx in batch_ids]
-        if self.meta_data:
-            meta_rows = [self.meta_data[idx] for idx in batch_ids]
-            topics = np.array([meta[2] for meta in meta_rows])
+        p_rows = [self.persona_data[idx] for idx in batch_ids]
+        # if self.meta_data:
+        #     meta_rows = [self.meta_data[idx] for idx in batch_ids]
+        #     topics = np.array([meta[2] for meta in meta_rows])
         dialog_lens = [self.data_lens[idx] for idx in batch_ids]
 
         cur_pos = [np.minimum(1.0, e_id/float(l)) for l in dialog_lens]
 
         # input_context, context_lens, floors, topics, a_profiles, b_Profiles, outputs, output_lens
         context_lens, context_utts, floors, out_utts, out_lens, out_floors, out_das = [], [], [], [], [], [], []
-        for row in rows:
+        for i, row in enumerate(rows):
             if s_id < len(row)-1:
                 cut_row = row[s_id:e_id]
                 in_row = cut_row[0:-1]
@@ -141,6 +142,9 @@ class PERSONAataLoader(LongDataLoader):
                 floors.append([int(floor==out_floor) for utt, floor in in_row])
                 context_lens.append(len(cut_row) - 1)
 
+                p_context.append([self.pad_to(utt) for utt in p_rows[i][out_floor]])
+                p_lens.append(len(p_rows[i][out_floor]))
+
                 out_utt = self.pad_to(out_utt, do_pad=False)
                 out_utts.append(out_utt)
                 out_lens.append(len(out_utt))
@@ -151,22 +155,25 @@ class PERSONAataLoader(LongDataLoader):
                 raise ValueError("S_ID %d larger than row" % s_id)
 
         # my_profiles = np.array([meta[out_floors[idx]] + [cur_pos[idx]] for idx, meta in enumerate(meta_rows)])
-        if self.meta_data:
-            my_profiles = np.array([meta[out_floors[idx]] for idx, meta in enumerate(meta_rows)], dtype=np.float32)
-            ot_profiles = np.array([meta[1-out_floors[idx]] for idx, meta in enumerate(meta_rows)], dtype=np.float32)
-            vec_out_das = np.array(out_das, dtype=np.int64)
+        # if self.meta_data:
+        #     my_profiles = np.array([meta[out_floors[idx]] for idx, meta in enumerate(meta_rows)], dtype=np.float32)
+        #     ot_profiles = np.array([meta[1-out_floors[idx]] for idx, meta in enumerate(meta_rows)], dtype=np.float32)
+        #     vec_out_das = np.array(out_das, dtype=np.int64)
         vec_context_lens = np.array(context_lens, dtype=np.int64)
         vec_context = np.zeros((self.batch_size, np.max(vec_context_lens), self.max_utt_size), dtype=np.int64)
         vec_floors = np.zeros((self.batch_size, np.max(vec_context_lens)), dtype=np.int64)
         vec_outs = np.zeros((self.batch_size, np.max(out_lens)), dtype=np.int64)
         vec_out_lens = np.array(out_lens, dtype=np.int64)
+        vec_profile_lens = np.array(p_lens, dtype=np.int64)
+        vec_profile = np.zeros((self.batch_size, np.max(vec_profile_lens), self.max_utt_size), dtype=np.int64)
 
         for b_id in range(self.batch_size):
             vec_outs[b_id, 0:vec_out_lens[b_id]] = out_utts[b_id]
             vec_floors[b_id, 0:vec_context_lens[b_id]] = floors[b_id]
             vec_context[b_id, 0:vec_context_lens[b_id], :] = np.array(context_utts[b_id])
+            vec_profile[b_id, 0:vec_profile_lens[b_id], :] = np.array(p_context[b_id])
 
-        return vec_context, vec_context_lens, vec_floors, topics, my_profiles, ot_profiles, vec_outs, vec_out_lens, vec_out_das, p_context, p_lens
+        return vec_context, vec_context_lens, vec_floors, topics, my_profiles, ot_profiles, vec_outs, vec_out_lens, vec_out_das, vec_profile, vec_profile_lens
 
 
 
