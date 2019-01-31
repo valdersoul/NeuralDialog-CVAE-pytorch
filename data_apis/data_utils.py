@@ -115,12 +115,16 @@ class PERSONAataLoader(LongDataLoader):
         vec_out_das = None
         p_context = []
         p_lens = []
+        vec_profile_lens = None
+        vec_profile = None
+
         # the batch index, the starting point and end point for segment
         b_id, s_id, e_id = cur_grid
 
         batch_ids = self.batch_indexes[b_id]
         rows = [self.data[idx] for idx in batch_ids]
-        p_rows = [self.persona_data[idx] for idx in batch_ids]
+        if self.persona_data:
+            p_rows = [self.persona_data[idx] for idx in batch_ids]
         # if self.meta_data:
         #     meta_rows = [self.meta_data[idx] for idx in batch_ids]
         #     topics = np.array([meta[2] for meta in meta_rows])
@@ -164,14 +168,16 @@ class PERSONAataLoader(LongDataLoader):
         vec_floors = np.zeros((self.batch_size, np.max(vec_context_lens)), dtype=np.int64)
         vec_outs = np.zeros((self.batch_size, np.max(out_lens)), dtype=np.int64)
         vec_out_lens = np.array(out_lens, dtype=np.int64)
-        vec_profile_lens = np.array(p_lens, dtype=np.int64)
-        vec_profile = np.zeros((self.batch_size, np.max(vec_profile_lens), self.max_utt_size), dtype=np.int64)
+        if self.persona_data:
+            vec_profile_lens = np.array(p_lens, dtype=np.int64)
+            vec_profile = np.zeros((self.batch_size, np.max(vec_profile_lens), self.max_utt_size), dtype=np.int64)
 
         for b_id in range(self.batch_size):
             vec_outs[b_id, 0:vec_out_lens[b_id]] = out_utts[b_id]
             vec_floors[b_id, 0:vec_context_lens[b_id]] = floors[b_id]
-            vec_context[b_id, 0:vec_context_lens[b_id], :] = np.array(context_utts[b_id])
-            vec_profile[b_id, 0:vec_profile_lens[b_id], :] = np.array(p_context[b_id])
+            if self.persona_data:
+                vec_context[b_id, 0:vec_context_lens[b_id], :] = np.array(context_utts[b_id])
+                vec_profile[b_id, 0:vec_profile_lens[b_id], :] = np.array(p_context[b_id])
 
         return vec_context, vec_context_lens, vec_floors, topics, my_profiles, ot_profiles, vec_outs, vec_out_lens, vec_out_das, vec_profile, vec_profile_lens
 

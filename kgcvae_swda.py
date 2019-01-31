@@ -63,7 +63,7 @@ def main():
     #api = SWDADialogCorpus(FLAGS.data_dir, word2vec=FLAGS.word2vec_path, word2vec_dim=config.embed_size)
     api = PERSONADialogCorpus(data_path, FLAGS.data, word2vec=FLAGS.word2vec_path, word2vec_dim=config.embed_size)
     print("dataset loaded")
-    
+
     dial_corpus = api.get_dialog_corpus()
     train_dial, valid_dial = dial_corpus.get("train"), dial_corpus.get("valid")
     if config.use_profile:
