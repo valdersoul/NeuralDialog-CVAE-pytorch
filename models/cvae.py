@@ -747,12 +747,11 @@ class S2S(BaseTFModel):
             elif self.sent_type == "rnn":
                 input_embedding, sent_size = get_rnn_encode(input_embedding, self.sent_cell, self.keep_prob, scope="sent_rnn")
                 if use_profile:
-                    profile_embedding, p_sent_size = get_rnn_encode(profile_embedding, self.sent_cell, self.output_lens,
-                                                     self.keep_prob, scope="sent_rnn", reuse=True)
+                    profile_embedding, p_sent_size = get_rnn_encode(profile_embedding, self.sent_cell, self.keep_prob, scope="sent_rnn")
             elif self.sent_type == "bi_rnn":
                 input_embedding, sent_size = get_bi_rnn_encode(input_embedding, self.bi_sent_cell, scope="sent_bi_rnn")
                 if use_profile:
-                    profile_embedding, p_sent_size = get_bi_rnn_encode(profile_embedding, self.bi_sent_cell, self.output_lens, scope="sent_bi_rnn", reuse=True)
+                    profile_embedding, p_sent_size = get_bi_rnn_encode(profile_embedding, self.bi_sent_cell, scope="sent_bi_rnn")
             else:
                 raise ValueError("Unknown sent_type. Must be one of [bow, rnn, bi_rnn]")
 
@@ -769,7 +768,7 @@ class S2S(BaseTFModel):
             floor_one_hot = floor_one_hot.view(-1, max_dialog_len, 2)
             joint_embedding_input = torch.cat([input_embedding, floor_one_hot], 2)
             if use_profile:
-                profile_post = torch.zeros(floor_one_hot.size()[0], max_profile_len, 2).cuda()
+                profile_post = torch.zeros(floor_one_hot.size()[0], max_profile_len, 2)
                 joint_embedding_profile = torch.cat([profile_embedding, profile_post], 2)
 
 
@@ -784,7 +783,7 @@ class S2S(BaseTFModel):
             if use_profile:
                 _, enc_last_state_profile = utils.dynamic_rnn(
                     self.enc_cell,
-                    joint_embedding_input,
+                    joint_embedding_profile,
                     sequence_length=self.profile_lens)
 
             if self.num_layer > 1:
