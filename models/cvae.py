@@ -729,6 +729,7 @@ class S2S(BaseTFModel):
             setattr(self, k, v)
 
         max_dialog_len = self.input_contexts.size(1)
+        max_profile_len = self.profile_contexts.size(1)
 
         with variable_scope.variable_scope("wordEmbedding"):
 
@@ -758,7 +759,7 @@ class S2S(BaseTFModel):
             # reshape input into dialogs
             input_embedding = input_embedding.view(-1, max_dialog_len, sent_size)
             if use_profile:
-                profile_embedding = profile_embedding.view(-1, max_dialog_len, p_sent_size)
+                profile_embedding = profile_embedding.view(-1, max_profile_len, p_sent_size)
             if self.keep_prob < 1.0:
                 input_embedding = F.dropout(input_embedding, 1 - self.keep_prob, self.training)
 
@@ -768,7 +769,7 @@ class S2S(BaseTFModel):
             floor_one_hot = floor_one_hot.view(-1, max_dialog_len, 2)
             joint_embedding_input = torch.cat([input_embedding, floor_one_hot], 2)
             if use_profile:
-                profile_post = torch.zeros(floor_one_hot.size())
+                profile_post = torch.zeros(floor_one_hot.size()).cuda()
                 joint_embedding_profile = torch.cat([profile_embedding, profile_post], 2)
 
 

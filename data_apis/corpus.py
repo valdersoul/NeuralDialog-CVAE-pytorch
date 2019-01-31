@@ -7,7 +7,7 @@ import nltk
 
 class PERSONADialogCorpus(object):
 
-    def __init__(self, corpus_path, type, max_vocab_cnt=20000, word2vec=None, word2vec_dim=None):
+    def __init__(self, corpus_path, type, max_vocab_cnt=10000, word2vec=None, word2vec_dim=None):
         """
         :param corpus_path: the folder that contains the SWDA dialog corpus
         """
