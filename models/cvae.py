@@ -647,6 +647,7 @@ class S2S(BaseTFModel):
     '''
     def __init__(self, config, api, log_dir, scope=None):
         super(S2S, self).__init__()
+        self.use_profile = config.use_profile
         self.vocab = api.vocab
         self.rev_vocab = api.rev_vocab
         self.vocab_size = len(self.vocab)
@@ -686,7 +687,7 @@ class S2S(BaseTFModel):
         self.enc_cell = self.get_rnncell(config.cell_type, joint_embedding_size, self.context_cell_size, keep_prob=1.0, num_layer=config.num_layer)
         cond_embedding_size = config.topic_embed_size + self.context_cell_size
 
-        if config.use_profile:
+        if self.use_profile:
             dec_inputs_size = cond_embedding_size * 2
         else:
             dec_inputs_size = cond_embedding_size
