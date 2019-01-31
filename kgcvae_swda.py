@@ -27,7 +27,7 @@ tf.app.flags.DEFINE_bool("save_model", True, "Create checkpoints")
 tf.app.flags.DEFINE_string("test_path", "run1500783422", "the dir to load checkpoint for forward only")
 tf.app.flags.DEFINE_string("model", "cvae", "model used to train/valid")
 tf.app.flags.DEFINE_string("data", "both", "data used to train/valid")
-tf.app.flags.DEFINE_int("number", 0, 'model to load')
+tf.app.flags.DEFINE_integer("number", 0, 'model to load')
 FLAGS = tf.app.flags.FLAGS
 
 
@@ -175,14 +175,12 @@ def main():
         else:
             # begin validation
             # begin validation
-            model_path = os.path.join(ckp_dir, model.__class__.__name__+ "-%d.pth")
-            model.load_state_dict(torch.load(dm_checkpoint_path %(FLAGS.number)))
 
             valid_feed.epoch_init(valid_config.batch_size, valid_config.backward_size,
                                   valid_config.step_size, shuffle=False, intra_shuffle=False)
             model.eval()
             dest_f = open(os.path.join(log_dir, "test.txt"), "wb")
-            model.test_model("ELBO_TEST", valid_feed, repeat=10, dest=dest_f, use_profile=config.use_profile)
+            model.test_model( valid_feed, repeat=10, dest=dest_f, use_profile=config.use_profile)
 
             # test_feed.epoch_init(valid_config.batch_size, valid_config.backward_size,
             #                       valid_config.step_size, shuffle=False, intra_shuffle=False)

@@ -402,7 +402,7 @@ class KgRnnCVAE(BaseTFModel):
                                                                     end_of_sequence_id=self.eos_id,
                                                                     maximum_length=self.max_utt_len,
                                                                     num_decoder_symbols=self.vocab_size,
-                                                                    context_vector=selected_attribute_embedding,
+                                                                    context_vector=None,
                                                                     decode_type='greedy')
                 # print(final_context_state)
             else:
@@ -519,6 +519,9 @@ class KgRnnCVAE(BaseTFModel):
                 if key == "use_prior":
                     tiled_feed_dict[key] = val
                     continue
+                if val is None:
+                    tiled_feed_dict[key] = None
+                    continue
                 multipliers = [1]*len(val.shape)
                 multipliers[0] = repeat
                 tiled_feed_dict[key] = np.tile(val, multipliers)
@@ -622,16 +625,15 @@ class KgRnnCVAE(BaseTFModel):
             feed_dict = self.batch_2_feed(batch, None, use_prior=True, repeat=repeat)
             with torch.no_grad():
                 self.forward(feed_dict, mode='test', use_profile=use_profile)
-            word_outs, da_logits = self.dec_out_words.cpu().numpy(), self.da_logits.cpu().numpy()
+            word_outs = self.dec_out_words.cpu().numpy()
             sample_words = np.split(word_outs, repeat, axis=0)
-            sample_das = np.split(da_logits, repeat, axis=0)
 
             true_floor = feed_dict["floors"].cpu().numpy()
             true_srcs = feed_dict["input_contexts"].cpu().numpy()
             true_src_lens = feed_dict["context_lens"].cpu().numpy()
             true_outs = feed_dict["output_tokens"].cpu().numpy()
-            true_topics = feed_dict["topics"].cpu().numpy()
-            true_das = feed_dict["output_das"].cpu().numpy()
+            #true_topics = feed_dict["topics"].cpu().numpy()
+            #true_das = feed_dict["output_das"].cpu().numpy()
             local_t += 1
 
             if dest != sys.stdout:
@@ -640,7 +642,7 @@ class KgRnnCVAE(BaseTFModel):
 
             for b_id in range(test_feed.batch_size):
                 # print the dialog context
-                dest.write("Batch %d index %d of topic %s\n" % (local_t, b_id, self.topic_vocab[true_topics[b_id]]))
+                #dest.write("Batch %d index %d of topic %s\n" % (local_t, b_id, self.topic_vocab[true_topics[b_id]]))
                 start = np.maximum(0, true_src_lens[b_id]-5)
                 for t_id in range(start, true_srcs.shape[1], 1):
                     src_str = " ".join([self.vocab[e] for e in true_srcs[b_id, t_id].tolist() if e != 0])
@@ -648,16 +650,16 @@ class KgRnnCVAE(BaseTFModel):
                 # print the true outputs
                 true_tokens = [self.vocab[e] for e in true_outs[b_id].tolist() if e not in [0, self.eos_id, self.go_id]]
                 true_str = " ".join(true_tokens).replace(" ' ", "'")
-                da_str = self.da_vocab[true_das[b_id]]
+                #da_str = self.da_vocab[true_das[b_id]]
                 # print the predicted outputs
-                dest.write("Target (%s) >> %s\n" % (da_str, true_str))
+                dest.write("Target  >> %s\n" % ( true_str))
                 local_tokens = []
                 for r_id in range(repeat):
                     pred_outs = sample_words[r_id]
-                    pred_da = np.argmax(sample_das[r_id], axis=1)[0]
+                    #pred_da = np.argmax(sample_das[r_id], axis=1)[0]
                     pred_tokens = [self.vocab[e] for e in pred_outs[b_id].tolist() if e != self.eos_id and e != 0]
                     pred_str = " ".join(pred_tokens).replace(" ' ", "'")
-                    dest.write("Sample %d (%s) >> %s\n" % (r_id, self.da_vocab[pred_da], pred_str))
+                    dest.write("Sample %d  >> %s\n" % (r_id, pred_str))
                     local_tokens.append(pred_tokens)
 
                 max_bleu, avg_bleu = utils.get_bleu_stats(true_tokens, local_tokens)
