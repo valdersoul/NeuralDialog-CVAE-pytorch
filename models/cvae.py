@@ -167,7 +167,7 @@ class KgRnnCVAE(BaseTFModel):
 
         self.attribute_fc1 = nn.Sequential(nn.Linear(config.da_embed_size, 30), nn.Tanh())
 
-        cond_embedding_size = self.context_cell_size
+        cond_embedding_size = self.context_cell_size * 2 if config.use_profile else self.context_cell_size
 
         # recognitionNetwork
         recog_input_size = cond_embedding_size + output_embedding_size
