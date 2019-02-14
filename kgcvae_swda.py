@@ -106,12 +106,12 @@ def main():
         model.apply(lambda m: [torch.nn.init.uniform_(p.data, -1.0 * config.init_w, config.init_w) for p in m.parameters()])
 
         # Load word2vec weight
-        # if api.word2vec is not None and not FLAGS.forward_only:
-        #     print("Loaded word2vec")
-        #     model.embedding.weight.data.copy_(torch.from_numpy(np.array(api.word2vec)))
+        if api.word2vec is not None and not FLAGS.forward_only:
+            print("Loaded word2vec")
+            model.embedding.weight.data.copy_(torch.from_numpy(np.array(api.word2vec)))
         model.embedding.weight.data[0].fill_(0)
-        # model.idxembedding.weight.data.copy_(torch.from_numpy(np.array(api.word2idx, dtype='float32')).unsqueeze(-1))
-
+        model.idxembedding.weight.data.copy_(torch.from_numpy(np.array(api.word2idx, dtype='float32')).unsqueeze(-1))
+        model.idxembedding.weight.require_grad = False
         if ckpt:
             print("Reading dm models parameters from %s" % ckpt)
             model.load_state_dict(torch.load(ckpt))
