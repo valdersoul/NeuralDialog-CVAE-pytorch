@@ -229,7 +229,6 @@ class S2Smemory(BaseTFModel):
                 # print(rc_loss * label_mask)
                 rc_loss = torch.sum(rc_loss * label_mask, 1)
                 self.avg_rc_loss = rc_loss.mean()
-                print(self.avg_rc_loss)
                 # used only for perpliexty calculation. Not used for optimzation
                 self.rc_ppl = torch.exp(torch.sum(rc_loss) / torch.sum(label_mask))
 
