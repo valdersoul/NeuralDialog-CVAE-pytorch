@@ -133,12 +133,9 @@ class S2Smemory(BaseTFModel):
             elif self.sent_type == "rnn":
                 input_embedding, sent_size = get_rnn_encode(input_embedding, self.sent_cell, self.keep_prob, scope="sent_rnn")
             elif self.sent_type == "bi_rnn":
-                print(self.input_contexts)
-                print(input_embedding)
                 input_embedding, sent_size = get_bi_rnn_encode(input_embedding, self.bi_sent_cell, scope="sent_bi_rnn")
             else:
                 raise ValueError("Unknown sent_type. Must be one of [bow, rnn, bi_rnn]")
-            print('fuck')
             # reshape input into dialogs
             input_embedding = input_embedding.view(-1, max_dialog_len, sent_size)
             if use_profile:
