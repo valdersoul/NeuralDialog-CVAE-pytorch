@@ -120,20 +120,27 @@ class PERSONADialogCorpus(object):
         with open(self.word_vec_path, "rb") as f:
             lines = f.readlines()
         raw_word2vec = {}
-        for l in lines:
+        raw_word2idx = {}
+        for idx, l in enumerate(lines):
             w, vec = l.split(" ", 1)
             raw_word2vec[w] = vec
+            raw_word2vec[w] = idx + 1
         # clean up lines for memory efficiency
         self.word2vec = []
+        self.word2idx = []
         oov_cnt = 0
         for v in self.vocab:
             str_vec = raw_word2vec.get(v, None)
+            str_idx = raw_word2idx.get(v, None)
             if str_vec is None:
                 oov_cnt += 1
                 vec = np.random.randn(self.word2vec_dim) * 0.1
+                idx = 1
             else:
                 vec = np.fromstring(str_vec, sep=" ")
+                idx = str_idx
             self.word2vec.append(vec)
+            self.word2idx.append(idx)
         print("word2vec cannot cover %f vocab" % (float(oov_cnt) / len(self.vocab)))
 
     def get_dialog_corpus(self):
@@ -275,20 +282,29 @@ class SWDADialogCorpus(object):
         with open(self.word_vec_path, "rb") as f:
             lines = f.readlines()
         raw_word2vec = {}
-        for l in lines:
+        raw_word2idx = {}
+        for idx, l in enumerate(lines):
             w, vec = l.split(" ", 1)
             raw_word2vec[w] = vec
+            raw_word2idx[w] = idx
         # clean up lines for memory efficiency
         self.word2vec = []
+        self.word2idx = []
         oov_cnt = 0
         for v in self.vocab:
             str_vec = raw_word2vec.get(v, None)
             if str_vec is None:
                 oov_cnt += 1
-                vec = np.random.randn(self.word2vec_dim) * 0.1
+                idx = 1
+                if v == "<pad>":
+                    vec = np.zeros(self.word2vec_dim)
+                else:
+                    vec = np.random.randn(self.word2vec_dim) * 0.1
             else:
                 vec = np.fromstring(str_vec, sep=" ")
+                idx = raw_word2idx.get(v)
             self.word2vec.append(vec)
+            self.word2idx.append(idx)
         print("word2vec cannot cover %f vocab" % (float(oov_cnt)/len(self.vocab)))
 
     def get_utt_corpus(self):
