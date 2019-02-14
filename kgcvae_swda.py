@@ -18,7 +18,7 @@ import torch
 import glob
 
 # constants
-tf.app.flags.DEFINE_string("word2vec_path", None, "The path to word2vec. Can be None.")
+tf.app.flags.DEFINE_string("word2vec_path", "embedding/glove.twitter.27B.200d.txt", "The path to word2vec. Can be None.")
 tf.app.flags.DEFINE_string("data_dir", "data/full_swda_clean_42da_sentiment_dialog_corpus.p", "Raw data directory.")
 tf.app.flags.DEFINE_string("work_dir", "working", "Experiment results directory.")
 tf.app.flags.DEFINE_bool("equal_batch", True, "Make each batch has similar length.")
@@ -106,11 +106,11 @@ def main():
         model.apply(lambda m: [torch.nn.init.uniform_(p.data, -1.0 * config.init_w, config.init_w) for p in m.parameters()])
 
         # Load word2vec weight
-        if api.word2vec is not None and not FLAGS.forward_only:
-            print("Loaded word2vec")
-            model.embedding.weight.data.copy_(torch.from_numpy(np.array(api.word2vec)))
+        # if api.word2vec is not None and not FLAGS.forward_only:
+        #     print("Loaded word2vec")
+        #     model.embedding.weight.data.copy_(torch.from_numpy(np.array(api.word2vec)))
         model.embedding.weight.data[0].fill_(0)
-        model.idxembedding.weight.data.copy_(torch.from_numpy(np.array(api.word2idx, dtype='float32')).unsqueeze(-1))
+        # model.idxembedding.weight.data.copy_(torch.from_numpy(np.array(api.word2idx, dtype='float32')).unsqueeze(-1))
 
         if ckpt:
             print("Reading dm models parameters from %s" % ckpt)
