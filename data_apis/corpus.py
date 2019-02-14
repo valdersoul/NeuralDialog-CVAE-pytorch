@@ -16,6 +16,7 @@ class PERSONADialogCorpus(object):
         self.word_vec_path = word2vec
         self.word2vec_dim = word2vec_dim
         self.word2vec = None
+        self.word2idx = None
         self.dialog_id = 0
         self.persona_id = 1
         self.utt_id = 2
@@ -23,6 +24,8 @@ class PERSONADialogCorpus(object):
         self.valid_corpus = self.process(corpus_path.replace('train', 'valid'), type)
         self.build_vocab(max_vocab_cnt)
         self.load_word2vec()
+        if not word2vec:
+            self.word2idx = [1] * len(self.vocab)
         print("Done loading corpus")
 
     def process(self, path, type):

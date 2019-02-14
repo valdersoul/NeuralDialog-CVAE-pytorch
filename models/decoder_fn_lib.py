@@ -12,7 +12,7 @@ import torch.nn
 import torch.nn.functional as F
 from torch.nn.utils.rnn import pack_padded_sequence, pad_packed_sequence
 
-from .utils import dynamic_rnn
+from .utils import dynamic_rnn, dynamic_rnn_attention
 
 def inference_loop(cell, output_fn, embeddings,
                     encoder_state,
@@ -101,3 +101,6 @@ def train_loop(cell, output_fn, inputs, init_state, context_vector, sequence_len
     if context_vector is not None:
         inputs = torch.cat([inputs, context_vector.unsqueeze(1).expand(inputs.size(0), inputs.size(1), context_vector.size(1))], 2)
     return dynamic_rnn(cell, inputs, sequence_length, init_state, output_fn) + (None,)
+
+def train_attention_loop(cell, output_fn, inputs, init_state, context_vector, max_length, atten_fn=None):
+    return dynamic_rnn_attention(cell, inputs, max_length, init_state, output_fn, atten_fn, context_vector) + (None,)
