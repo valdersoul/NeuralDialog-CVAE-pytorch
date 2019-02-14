@@ -88,9 +88,8 @@ class S2Smemory(BaseTFModel):
         else:
             self.dec_init_state_net = nn.Sequential(nn.Linear(dec_inputs_size, self.dec_cell_size), nn.Tanh())
 
-        self.wc = nn.Linear(self.embed_size * 2, self.embed_size)
         # decoder
-        dec_input_embedding_size = self.embed_size
+        dec_input_embedding_size = self.embed_size if not self.use_profile else self.embed_size * 2
 
         self.dec_cell = self.get_rnncell(config.cell_type, dec_input_embedding_size, self.dec_cell_size,
                                          config.keep_prob, config.num_layer)
@@ -210,8 +209,7 @@ class S2Smemory(BaseTFModel):
                                                                                         atten_fn=self.atten_proj,
                                                                                         init_state=dec_init_state, 
                                                                                         context_vector=profile_embedding, 
-                                                                                        max_length=max_dialog_len,
-                                                                                        wc_fn=self.wc)
+                                                                                        max_length=max_dialog_len)
 
             if final_context_state is not None:
                 self.dec_out_words = final_context_state

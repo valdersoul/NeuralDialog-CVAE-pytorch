@@ -128,16 +128,16 @@ def attention(hidden, context_vector, atten_fn=None):
 
     return context
 
-def decode_once(cell, input, hidden_state, context_vector, atten_fn=None, wc_fn=None):
+def decode_once(cell, input, hidden_state, context_vector, atten_fn=None):
     """
     compute the attentioned input and output the result and the next hidden
     """
     context = attention(hidden_state, context_vector, atten_fn)
-    enhance_input = F.tanh(wc_fn(torch.cat([context, input], -1)))
+    enhance_input = torch.cat([context, input], -1)
     output, hidden_state = cell(enhance_input.unsqueeze(1), hidden_state)
     return output, hidden_state
 
-def dynamic_rnn_attention(cell, inputs, max_length, init_state, output_fn, atten_fn, context_vector, wc_fn):
+def dynamic_rnn_attention(cell, inputs, max_length, init_state, output_fn, atten_fn, context_vector):
     """
     Used to decode with attention
     """
@@ -146,7 +146,7 @@ def dynamic_rnn_attention(cell, inputs, max_length, init_state, output_fn, atten
     length = inputs.size(1)
     for time in range(length):
         input = inputs[:,time,:]
-        output, hidden_state = decode_once(cell, input, hidden_state, context_vector, atten_fn, wc_fn)
+        output, hidden_state = decode_once(cell, input, hidden_state, context_vector, atten_fn)
         outputs.append(output)
 
     outputs = torch.cat(outputs, 1)
