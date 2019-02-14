@@ -532,8 +532,10 @@ class KgRnnCVAE(BaseTFModel):
         if global_t is not None:
             feed_dict["global_t"] = global_t
 
-        feed_dict = {k: torch.from_numpy(v).cuda() if isinstance(v, np.ndarray) else v for k, v in feed_dict.items()}
-        #feed_dict = {k: torch.from_numpy(v) if isinstance(v, np.ndarray) else v for k, v in feed_dict.items()}
+        if torch.cuda.is_available():``
+            feed_dict = {k: torch.from_numpy(v).cuda() if isinstance(v, np.ndarray) else v for k, v in feed_dict.items()}
+        else:
+            feed_dict = {k: torch.from_numpy(v) if isinstance(v, np.ndarray) else v for k, v in feed_dict.items()}
 
         return feed_dict
 
@@ -930,8 +932,10 @@ class S2S(BaseTFModel):
         if global_t is not None:
             feed_dict["global_t"] = global_t
 
-        feed_dict = {k: torch.from_numpy(v).cuda() if isinstance(v, np.ndarray) else v for k, v in feed_dict.items()}
-        #feed_dict = {k: torch.from_numpy(v) if isinstance(v, np.ndarray) else v for k, v in feed_dict.items()}
+        if torch.cuda.is_available():
+            feed_dict = {k: torch.from_numpy(v).cuda() if isinstance(v, np.ndarray) else v for k, v in feed_dict.items()}
+        else:
+            feed_dict = {k: torch.from_numpy(v) if isinstance(v, np.ndarray) else v for k, v in feed_dict.items()}
 
         return feed_dict
 
