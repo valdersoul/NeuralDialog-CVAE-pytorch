@@ -146,7 +146,7 @@ def dynamic_rnn_attention(cell, inputs, max_length, init_state, output_fn, atten
     length = inputs.size(1)
     for time in range(length):
         input = inputs[:,time,:]
-        output, hidden_state = decode_once(cell, input, hidden_state, context_vector, atten_fn)
+        output, hidden_state = decode_once(cell, input, hidden_state, context_vector, atten_fn, wc_fn)
         outputs.append(output)
 
     outputs = torch.cat(outputs, 1)
