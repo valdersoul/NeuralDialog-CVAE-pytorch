@@ -123,12 +123,6 @@ class S2Smemory(BaseTFModel):
 
             self.input_contexts = self.input_contexts.view(-1, self.max_utt_len)
             input_embedding = self.embedding(self.input_contexts)
-            if use_profile:
-                self.profile_contexts = self.profile_contexts.view(-1, self.max_utt_len)
-                profile_embedding = self.embedding(self.profile_contexts)
-                profile_idx = self.idxembedding(self.profile_contexts)
-                profile_embedding, p_sent_size = get_idf(profile_embedding, profile_idx)
-
             if self.sent_type == "bow":
                 input_embedding, sent_size = get_bow(input_embedding)
             elif self.sent_type == "rnn":
@@ -140,8 +134,11 @@ class S2Smemory(BaseTFModel):
 
             # reshape input into dialogs
             input_embedding = input_embedding.view(-1, max_dialog_len, sent_size)
-
             if use_profile:
+                self.profile_contexts = self.profile_contexts.view(-1, self.max_utt_len)
+                profile_embedding = self.embedding(self.profile_contexts)
+                profile_idx = self.idxembedding(self.profile_contexts)
+                profile_embedding, p_sent_size = get_idf(profile_embedding, profile_idx)
                 profile_embedding = profile_embedding.view(-1, max_profile_len, p_sent_size)
             if self.keep_prob < 1.0:
                 input_embedding = F.dropout(input_embedding, 1 - self.keep_prob, self.training)
