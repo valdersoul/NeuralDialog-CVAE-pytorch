@@ -117,7 +117,7 @@ def attention(hidden, context_vector, atten_fn=None):
     Compute the profile-aware attentioned context vector
     """
     if atten_fn is not None:
-        projected_hidden = atten_fn(hidden).permute(1,2,0)
+        projected_hidden = F.tanh(atten_fn(hidden).permute(1,2,0))
     else:
         projected_hidden = hidden.permute(1,2,0)
     weights = torch.bmm(context_vector, projected_hidden).squeeze()
