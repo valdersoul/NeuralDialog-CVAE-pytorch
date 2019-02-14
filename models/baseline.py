@@ -221,7 +221,7 @@ class S2Smemory(BaseTFModel):
                 label_mask = torch.sign(labels).detach().float()
 
                 # rc_loss = tf.nn.sparse_softmax_cross_entropy_with_logits(logits=dec_outs, labels=labels)
-                rc_loss = F.cross_entropy(dec_outs.view(-1, dec_outs.size(-1)), labels.reshape(-1), reduce=False).view(
+                rc_loss = F.cross_entropy(dec_outs.view(-1, dec_outs.size(-1)), labels.reshape(-1), reduction='none', ignore_index=0).view(
                     dec_outs.size()[:-1])
                 # print(rc_loss * label_mask)
                 rc_loss = torch.sum(rc_loss * label_mask, 1)
