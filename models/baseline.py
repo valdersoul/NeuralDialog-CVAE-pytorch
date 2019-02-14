@@ -86,10 +86,11 @@ class S2Smemory(BaseTFModel):
             self.dec_init_state_net = nn.ModuleList(
                 [nn.Linear(dec_inputs_size, self.dec_cell_size) for i in range(config.num_layer)])
         else:
-            self.dec_init_state_net = nn.Linear(dec_inputs_size, self.dec_cell_size)
+            self.dec_init_state_net = nn.Sequential(nn.Linear(dec_inputs_size, self.dec_cell_size), nn.Tanh())
 
+        self.wc = nn.Linear(self.embed_size * 2, self.embed_size)
         # decoder
-        dec_input_embedding_size = self.embed_size if not self.use_profile else self.embed_size * 2
+        dec_input_embedding_size = self.embed_size
 
         self.dec_cell = self.get_rnncell(config.cell_type, dec_input_embedding_size, self.dec_cell_size,
                                          config.keep_prob, config.num_layer)
@@ -209,7 +210,8 @@ class S2Smemory(BaseTFModel):
                                                                                         atten_fn=self.atten_proj,
                                                                                         init_state=dec_init_state, 
                                                                                         context_vector=profile_embedding, 
-                                                                                        max_length=max_dialog_len)
+                                                                                        max_length=max_dialog_len,
+                                                                                        wc_fn=self.wc)
 
             if final_context_state is not None:
                 self.dec_out_words = final_context_state
@@ -227,6 +229,7 @@ class S2Smemory(BaseTFModel):
                 # print(rc_loss * label_mask)
                 rc_loss = torch.sum(rc_loss * label_mask, 1)
                 self.avg_rc_loss = rc_loss.mean()
+                print(self.avg_rc_loss)
                 # used only for perpliexty calculation. Not used for optimzation
                 self.rc_ppl = torch.exp(torch.sum(rc_loss) / torch.sum(label_mask))
 
