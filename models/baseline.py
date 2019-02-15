@@ -94,7 +94,7 @@ class S2Smemory(BaseTFModel):
         self.dec_cell = self.get_rnncell(config.cell_type, dec_input_embedding_size, self.dec_cell_size,
                                          config.keep_prob, config.num_layer)
         self.dec_cell_proj = nn.Linear(self.dec_cell_size, self.vocab_size)
-        self.atten_proj = nn.Linear(self.dec_cell_size, self.embed_size)
+        self.atten_proj = nn.Linear(input_embedding_size, self.dec_cell_size)
 
         self.build_optimizer(config, log_dir)
 
