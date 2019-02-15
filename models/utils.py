@@ -124,7 +124,7 @@ def attention(hidden, context_vector, atten_fn=None, atten_mask=None):
         mask = (weights != 0).float()
     else:
         mask = atten_mask
-    weights = torch.exp(weights - weights.max(-1)[0]) * mask
+    weights = torch.exp(weights - weights.max(-1, keepdim=True)[0]) * mask
     weights = weights / weights.sum(1, keepdim=True)
     context = (context_vector * weights.unsqueeze(2)).sum(1)
 
