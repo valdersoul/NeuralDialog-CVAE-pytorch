@@ -140,7 +140,7 @@ class PERSONADialogCorpus(object):
                 if v == "<pad>":
                     vec = np.zeros(self.word2vec_dim)
                 else:
-                    vec = np.random.randn(self.word2vec_dim) * 0.1
+                    vec = np.random.randn(self.word2vec_dim) * 0.1 - 0.05
             else:
                 vec = np.fromstring(str_vec, sep=" ")
                 idx = raw_word2idx.get(v)
