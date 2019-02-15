@@ -178,6 +178,7 @@ class S2Smemory(BaseTFModel):
             # reshape input into dialogs
             input_embedding = input_embedding.view(-1, max_dialog_len, sent_size)
             if use_profile:
+                profile_mask = (self.profile_contexts.sum(-1) != 0).float()
                 self.profile_contexts = self.profile_contexts.view(-1, self.max_utt_len)
                 profile_embedding = self.embedding(self.profile_contexts)
                 profile_idx = self.idxembedding(self.profile_contexts)
