@@ -179,7 +179,7 @@ class KgRnnCVAE(BaseTFModel):
         # priorNetwork
         # P(XYZ)=P(Z|X)P(X)P(Y|X,Z)
         self.priorNet_mulogvar = nn.Sequential(
-            nn.Linear(self.context_cell_size, np.maximum(config.latent_size * 2, 100)),
+            nn.Linear(cond_embedding_size, np.maximum(config.latent_size * 2, 100)),
             nn.Tanh(),
             nn.Linear(np.maximum(config.latent_size * 2, 100), config.latent_size * 2))
 
@@ -212,8 +212,8 @@ class KgRnnCVAE(BaseTFModel):
         dec_input_embedding_size = self.embed_size
         if self.use_hcf:
             dec_input_embedding_size += 30
-        if config.use_profile:
-            dec_input_embedding_size += self.context_cell_size
+        # if config.use_profile:
+        #     dec_input_embedding_size += self.context_cell_size
         self.dec_cell = self.get_rnncell(config.cell_type, dec_input_embedding_size, self.dec_cell_size, config.keep_prob, config.num_layer)
         self.dec_cell_proj = nn.Linear(self.dec_cell_size, self.vocab_size)
 
@@ -352,7 +352,7 @@ class KgRnnCVAE(BaseTFModel):
 
         with variable_scope.variable_scope("priorNetwork"):
             # P(XYZ)=P(Z|X)P(X)P(Y|X,Z)
-            prior_mulogvar = self.priorNet_mulogvar(enc_last_state)
+            prior_mulogvar = self.priorNet_mulogvar(cond_embedding)
             prior_mu, prior_logvar = torch.chunk(prior_mulogvar, 2, 1)
 
             # use sampled Z or posterior Z
@@ -404,7 +404,7 @@ class KgRnnCVAE(BaseTFModel):
                                                                     end_of_sequence_id=self.eos_id,
                                                                     maximum_length=self.max_utt_len,
                                                                     num_decoder_symbols=self.vocab_size,
-                                                                    context_vector=enc_last_state_profile if use_profile else None,
+                                                                    context_vector=None,
                                                                     decode_type='greedy')
                 # print(final_context_state)
             else:
@@ -423,7 +423,7 @@ class KgRnnCVAE(BaseTFModel):
                 dec_input_embedding = F.dropout(dec_input_embedding, 1 - self.keep_prob, self.training)
 
                 dec_outs, _, final_context_state =  decoder_fn_lib.train_loop(self.dec_cell, self.dec_cell_proj, dec_input_embedding, 
-                    init_state=dec_init_state, context_vector=enc_last_state_profile if use_profile else None, sequence_length=dec_seq_lens)
+                    init_state=dec_init_state, context_vector=None, sequence_length=dec_seq_lens)
 
             # dec_outs, _, final_context_state = dynamic_rnn_decoder(dec_cell, loop_func, inputs=dec_input_embedding, sequence_length=dec_seq_lens)
             if final_context_state is not None:
