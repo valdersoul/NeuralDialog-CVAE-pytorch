@@ -117,9 +117,10 @@ def attention(hidden, context_vector, atten_fn=None, atten_mask=None):
     Compute the profile-aware attentioned context vector
     """
     if atten_fn is not None:
-        projected_context = F.tanh(atten_fn(context_vector))
-    hidden = hidden.permute(1, 2, 0)
-    weights = torch.bmm(projected_context, hidden).squeeze()
+        projected_hidden = atten_fn(hidden).permute(1, 2, 0)
+    else:
+        projected_hidden = hidden.permute(1, 2, 0)
+    weights = torch.bmm(context_vector, projected_hidden).squeeze()
     if atten_mask is not None:
         mask = (weights != 0).float()
     else:

@@ -94,7 +94,7 @@ class S2Smemory(BaseTFModel):
         self.dec_cell = self.get_rnncell(config.cell_type, dec_input_embedding_size, self.dec_cell_size,
                                          config.keep_prob, config.num_layer)
         self.dec_cell_proj = nn.Linear(self.dec_cell_size, self.vocab_size)
-        self.atten_proj = nn.Linear(input_embedding_size, self.dec_cell_size)
+        self.atten_proj = nn.Linear(self.dec_cell_size, self.embed_size)
 
         self.build_optimizer(config, log_dir)
 
@@ -125,72 +125,72 @@ class S2Smemory(BaseTFModel):
             max_profile_len = self.profile_contexts.size(1)
 
         with variable_scope.variable_scope("wordEmbedding"):
+        #     self.input_contexts = self.input_contexts.view(-1, self.max_utt_len)
+        #     input_embedding = self.embedding(self.input_contexts)
+        #     if use_profile:
+        #         profile_mask = (self.profile_contexts.sum(-1) != 0).float()
+        #         self.profile_contexts = self.profile_contexts.view(-1, self.max_utt_len)
+        #         profile_embedding = self.embedding(self.profile_contexts)
+        #
+        #     if self.sent_type == "bow":
+        #         input_embedding, sent_size = get_bow(input_embedding)
+        #         if use_profile:
+        #             profile_embedding, p_sent_size = get_bow(profile_embedding)
+        #
+        #     elif self.sent_type == "rnn":
+        #         input_embedding, sent_size = get_rnn_encode(input_embedding, self.sent_cell, self.keep_prob,
+        #                                                     scope="sent_rnn")
+        #         if use_profile:
+        #             profile_embedding, p_sent_size = get_rnn_encode(profile_embedding, self.sent_cell,
+        #                                                             self.keep_prob, scope="sent_rnn")
+        #     elif self.sent_type == "bi_rnn":
+        #         input_embedding, sent_size = get_bi_rnn_encode(input_embedding, self.bi_sent_cell,
+        #                                                        scope="sent_bi_rnn")
+        #         if use_profile:
+        #             profile_embedding, p_sent_size = get_bi_rnn_encode(profile_embedding, self.bi_sent_cell,
+        #                                                                scope="sent_bi_rnn")
+        #     else:
+        #         raise ValueError("Unknown sent_type. Must be one of [bow, rnn, bi_rnn]")
+        #
+        #     # reshape input into dialogs
+        #     input_embedding = input_embedding.view(-1, max_dialog_len, sent_size)
+        #     if use_profile:
+        #         profile_embedding = profile_embedding.view(-1, max_profile_len, p_sent_size)
+        #     if self.keep_prob < 1.0:
+        #         input_embedding = F.dropout(input_embedding, 1 - self.keep_prob, self.training)
+        #
+        #     # convert floors into 1 hot
+        #     floor_one_hot = self.floors.new_zeros((self.floors.numel(), 2), dtype=torch.float)
+        #     floor_one_hot.data.scatter_(1, self.floors.view(-1, 1), 1)
+        #     floor_one_hot = floor_one_hot.view(-1, max_dialog_len, 2)
+        #     joint_embedding_input = torch.cat([input_embedding, floor_one_hot], 2)
+
             self.input_contexts = self.input_contexts.view(-1, self.max_utt_len)
             input_embedding = self.embedding(self.input_contexts)
-            if use_profile:
-                profile_mask = (self.profile_contexts.sum(-1) != 0).float()
-                self.profile_contexts = self.profile_contexts.view(-1, self.max_utt_len)
-                profile_embedding = self.embedding(self.profile_contexts)
-
             if self.sent_type == "bow":
                 input_embedding, sent_size = get_bow(input_embedding)
-                if use_profile:
-                    profile_embedding, p_sent_size = get_bow(profile_embedding)
-
             elif self.sent_type == "rnn":
-                input_embedding, sent_size = get_rnn_encode(input_embedding, self.sent_cell, self.keep_prob,
-                                                            scope="sent_rnn")
-                if use_profile:
-                    profile_embedding, p_sent_size = get_rnn_encode(profile_embedding, self.sent_cell,
-                                                                    self.keep_prob, scope="sent_rnn")
+                input_embedding, sent_size = get_rnn_encode(input_embedding, self.sent_cell, self.keep_prob, scope="sent_rnn")
             elif self.sent_type == "bi_rnn":
-                input_embedding, sent_size = get_bi_rnn_encode(input_embedding, self.bi_sent_cell,
-                                                               scope="sent_bi_rnn")
-                if use_profile:
-                    profile_embedding, p_sent_size = get_bi_rnn_encode(profile_embedding, self.bi_sent_cell,
-                                                                       scope="sent_bi_rnn")
+                input_embedding, sent_size = get_bi_rnn_encode(input_embedding, self.bi_sent_cell, scope="sent_bi_rnn")
             else:
                 raise ValueError("Unknown sent_type. Must be one of [bow, rnn, bi_rnn]")
-
             # reshape input into dialogs
             input_embedding = input_embedding.view(-1, max_dialog_len, sent_size)
             if use_profile:
+                self.profile_contexts = self.profile_contexts.view(-1, self.max_utt_len)
+                profile_embedding = self.embedding(self.profile_contexts)
+                profile_idx = self.idxembedding(self.profile_contexts)
+                profile_embedding, p_sent_size = get_idf(profile_embedding, profile_idx)
                 profile_embedding = profile_embedding.view(-1, max_profile_len, p_sent_size)
             if self.keep_prob < 1.0:
                 input_embedding = F.dropout(input_embedding, 1 - self.keep_prob, self.training)
 
             # convert floors into 1 hot
             floor_one_hot = self.floors.new_zeros((self.floors.numel(), 2), dtype=torch.float)
-            floor_one_hot.data.scatter_(1, self.floors.view(-1, 1), 1)
+            floor_one_hot.data.scatter_(1, self.floors.view(-1,1), 1)
             floor_one_hot = floor_one_hot.view(-1, max_dialog_len, 2)
             joint_embedding_input = torch.cat([input_embedding, floor_one_hot], 2)
-
-            # self.input_contexts = self.input_contexts.view(-1, self.max_utt_len)
-            # input_embedding = self.embedding(self.input_contexts)
-            # if self.sent_type == "bow":
-            #     input_embedding, sent_size = get_bow(input_embedding)
-            # elif self.sent_type == "rnn":
-            #     input_embedding, sent_size = get_rnn_encode(input_embedding, self.sent_cell, self.keep_prob, scope="sent_rnn")
-            # elif self.sent_type == "bi_rnn":
-            #     input_embedding, sent_size = get_bi_rnn_encode(input_embedding, self.bi_sent_cell, scope="sent_bi_rnn")
-            # else:
-            #     raise ValueError("Unknown sent_type. Must be one of [bow, rnn, bi_rnn]")
-            # # reshape input into dialogs
-            # input_embedding = input_embedding.view(-1, max_dialog_len, sent_size)
-            # if use_profile:
-            #     self.profile_contexts = self.profile_contexts.view(-1, self.max_utt_len)
-            #     profile_embedding = self.embedding(self.profile_contexts)
-            #     profile_idx = self.idxembedding(self.profile_contexts)
-            #     profile_embedding, p_sent_size = get_idf(profile_embedding, profile_idx)
-            #     profile_embedding = profile_embedding.view(-1, max_profile_len, p_sent_size)
-            # if self.keep_prob < 1.0:
-            #     input_embedding = F.dropout(input_embedding, 1 - self.keep_prob, self.training)
-            #
-            # # convert floors into 1 hot
-            # floor_one_hot = self.floors.new_zeros((self.floors.numel(), 2), dtype=torch.float)
-            # floor_one_hot.data.scatter_(1, self.floors.view(-1,1), 1)
-            # floor_one_hot = floor_one_hot.view(-1, max_dialog_len, 2)
-            # joint_embedding_input = torch.cat([input_embedding, floor_one_hot], 2)
 
         with variable_scope.variable_scope("contextRNN"):
             # and enc_last_state will be same as the true last state
