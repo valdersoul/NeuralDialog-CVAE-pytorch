@@ -102,5 +102,5 @@ def train_loop(cell, output_fn, inputs, init_state, context_vector, sequence_len
         inputs = torch.cat([inputs, context_vector.unsqueeze(1).expand(inputs.size(0), inputs.size(1), context_vector.size(1))], 2)
     return dynamic_rnn(cell, inputs, sequence_length, init_state, output_fn) + (None,)
 
-def train_attention_loop(cell, output_fn, inputs, init_state, context_vector, max_length, atten_fn=None):
-    return dynamic_rnn_attention(cell, inputs, max_length, init_state, output_fn, atten_fn, context_vector) + (None,)
+def train_attention_loop(cell, output_fn, inputs, init_state, context_vector, max_length, atten_fn=None, atten_mask=None):
+    return dynamic_rnn_attention(cell, inputs, max_length, init_state, output_fn, atten_fn, context_vector, atten_mask) + (None,)

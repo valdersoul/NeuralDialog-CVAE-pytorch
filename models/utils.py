@@ -112,32 +112,34 @@ def dynamic_rnn(cell, inputs, sequence_length, init_state=None, output_fn=None):
 
     return outputs, state
 
-def attention(hidden, context_vector, atten_fn=None):
+def attention(hidden, context_vector, atten_fn=None, atten_mask=None):
     """
     Compute the profile-aware attentioned context vector
     """
     if atten_fn is not None:
-        projected_hidden = atten_fn(hidden).permute(1,2,0)
+        projected_context = F.tanh(atten_fn(context_vector))
+    hidden = hidden.permute(1, 2, 0)
+    weights = torch.bmm(projected_context, hidden).squeeze()
+    if atten_mask is not None:
+        mask = (weights != 0).float()
     else:
-        projected_hidden = hidden.permute(1,2,0)
-    weights = torch.bmm(context_vector, projected_hidden).squeeze()
-    mask = (weights != 0).float()
+        mask = atten_mask
     weights = torch.exp(weights) * mask
     weights = weights / weights.sum(1, keepdim=True)
     context = (context_vector * weights.unsqueeze(2)).sum(1)
 
     return context
 
-def decode_once(cell, input, hidden_state, context_vector, atten_fn=None):
+def decode_once(cell, input, hidden_state, context_vector, atten_fn=None, atten_mask=None):
     """
     compute the attentioned input and output the result and the next hidden
     """
-    context = attention(hidden_state, context_vector, atten_fn)
+    context = attention(hidden_state, context_vector, atten_fn, atten_mask)
     enhance_input = torch.cat([context, input], -1)
     output, hidden_state = cell(enhance_input.unsqueeze(1), hidden_state)
     return output, hidden_state
 
-def dynamic_rnn_attention(cell, inputs, max_length, init_state, output_fn, atten_fn, context_vector):
+def dynamic_rnn_attention(cell, inputs, max_length, init_state, output_fn, atten_fn, context_vector, atten_mask=None):
     """
     Used to decode with attention
     """
@@ -146,7 +148,7 @@ def dynamic_rnn_attention(cell, inputs, max_length, init_state, output_fn, atten
     length = inputs.size(1)
     for time in range(length):
         input = inputs[:,time,:]
-        output, hidden_state = decode_once(cell, input, hidden_state, context_vector, atten_fn)
+        output, hidden_state = decode_once(cell, input, hidden_state, context_vector, atten_fn, atten_mask)
         outputs.append(output)
 
     outputs = torch.cat(outputs, 1)
