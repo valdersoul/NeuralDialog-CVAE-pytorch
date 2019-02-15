@@ -89,7 +89,7 @@ class S2Smemory(BaseTFModel):
             self.dec_init_state_net = nn.Sequential(nn.Linear(dec_inputs_size, self.dec_cell_size), nn.Tanh())
 
         # decoder
-        dec_input_embedding_size = self.embed_size if not self.use_profile else self.embed_size * 2
+        dec_input_embedding_size = self.embed_size if not self.use_profile else self.embed_size + input_embedding_size
 
         self.dec_cell = self.get_rnncell(config.cell_type, dec_input_embedding_size, self.dec_cell_size,
                                          config.keep_prob, config.num_layer)
