@@ -285,9 +285,9 @@ class DirVAE(BaseTFModel):
                 bow_loss = torch.sum(bow_loss, 1)
                 self.avg_bow_loss  = torch.mean(bow_loss)
 
-                prior_mean   = Variable(self.prior_mean).expand_as(posterior_mean)
-                prior_var    = Variable(self.prior_var).expand_as(posterior_mean)
-                prior_logvar = Variable(self.prior_logvar).expand_as(posterior_mean)
+                prior_mean   = self.prior_mean.expand_as(posterior_mean)
+                prior_var    = self.prior_var.expand_as(posterior_mean)
+                prior_logvar = self.prior_logvar.expand_as(posterior_mean)
                 var_division    = posterior_var  / prior_var
                 diff            = posterior_mean - prior_mean
                 diff_term       = diff * diff / prior_var
