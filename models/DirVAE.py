@@ -240,7 +240,7 @@ class DirVAE(BaseTFModel):
             dec_init = self.dec_init_state_net(self.p) 
 
             # BOW loss
-            self.bow_logits = self.bow_project(dec_init)
+            self.bow_logits = self.bow_project(self.p)
         
         with variable_scope.variable_scope("recogDecoder"):
             if model == 'test':
