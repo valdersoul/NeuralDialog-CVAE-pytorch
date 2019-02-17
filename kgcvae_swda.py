@@ -12,7 +12,7 @@ from data_apis.corpus import SWDADialogCorpus, PERSONADialogCorpus
 from data_apis.data_utils import PERSONAataLoader
 from models.cvae import KgRnnCVAE, S2S
 from models.baseline import S2Smemory
-
+from models.DirVAE import DirVAE
 import torch
 
 import glob
@@ -86,9 +86,9 @@ def main():
     if True:
         scope = "model"
         if FLAGS.model == 'cvae':
-            model = KgRnnCVAE(config, api, log_dir=None if FLAGS.forward_only else log_dir, scope=scope)
+            model = DirVAE(config, api, log_dir=None if FLAGS.forward_only else log_dir, scope=scope)
         elif FLAGS.model == 's2s':
-            model = S2Smemory(config, api, log_dir=None if FLAGS.forward_only else log_dir, scope=scope)
+            model = S2S(config, api, log_dir=None if FLAGS.forward_only else log_dir, scope=scope)
 
         print("Created computation graphs")
         # write config to a file for logging
@@ -111,8 +111,8 @@ def main():
             model.embedding.weight.data.copy_(torch.from_numpy(np.array(api.word2vec)))
             model.embedding.weight.require_grad = False
         model.embedding.weight.data[0].fill_(0)
-        model.idxembedding.weight.data.copy_(torch.from_numpy(np.array(api.word2idx, dtype='float32')).unsqueeze(-1))
-        model.idxembedding.weight.require_grad = False
+        #model.idxembedding.weight.data.copy_(torch.from_numpy(np.array(api.word2idx, dtype='float32')).unsqueeze(-1))
+        #model.idxembedding.weight.require_grad = False
 
         if ckpt:
             print("Reading dm models parameters from %s" % ckpt)

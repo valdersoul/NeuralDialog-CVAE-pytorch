@@ -40,7 +40,7 @@ class DirVAE(BaseTFModel):
         self.prior_mean = torch.from_numpy((np.log(self.a).T - np.mean(np.log(self.a), 1)).T)
         self.prior_var = torch.from_numpy((((1.0 / self.a) * (1 - (2.0 / self.h_dim))).T +
                                  (1.0 / (self.h_dim * self.h_dim)) * np.sum(1.0 / self.a, 1)).T)
-        self.prior_logvar = prior_var.log()
+        self.prior_logvar = self.prior_var.log()
 
         self.use_profile = config.use_profile
         self.vocab = api.vocab
@@ -139,7 +139,7 @@ class DirVAE(BaseTFModel):
         for param_group in self.optimizer.param_groups:
             param_group['lr'] = self.learning_rate
     
-    def forward(self, feed_dict, model='train', use_profile=False):
+    def forward(self, feed_dict, mode='train', use_profile=False):
         for k, v in feed_dict.items():
             setattr(self, k, v)
 
@@ -229,7 +229,7 @@ class DirVAE(BaseTFModel):
             posterior_var    = posterior_logvar.exp()
 
             # take sample
-            eps = Variable(posterior_mean.data.new().resize_as_(posterior_mean.data).normal_(0,1)) # noise
+            eps = posterior_mean.data.new().resize_as_(posterior_mean.data).normal_(0,1) # noise
             z = posterior_mean + posterior_var.sqrt() * eps                 # reparameterization
             self.p = F.softmax(z, -1)    
             if self.keep_prob < 1.0:
@@ -240,7 +240,7 @@ class DirVAE(BaseTFModel):
             dec_init = self.dec_init_state_net(self.p) 
 
             # BOW loss
-            self.bow_logits = self.bow_project(gen_inputs)
+            self.bow_logits = self.bow_project(dec_init)
         
         with variable_scope.variable_scope("recogDecoder"):
             if model == 'test':
