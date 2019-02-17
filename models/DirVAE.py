@@ -237,7 +237,7 @@ class DirVAE(BaseTFModel):
 
 
         with variable_scope.variable_scope("recognitionGeneration"):
-            dec_init = self.dec_init_state_net(self.p) 
+            dec_init = self.dec_init_state_net(self.p).unsqueeze(0) 
 
             # BOW loss
             self.bow_logits = self.bow_project(self.p)
