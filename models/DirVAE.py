@@ -110,7 +110,7 @@ class DirVAE(BaseTFModel):
 
         # BOW loss
         self.bow_project = nn.Sequential(
-            nn.Linear(self.h_dim, 400),
+            nn.Linear(self.dec_cell_size, 400),
             nn.Tanh(),
             nn.Dropout(1 - config.keep_prob),
             nn.Linear(400, self.vocab_size)
@@ -244,7 +244,7 @@ class DirVAE(BaseTFModel):
             dec_init = self.dec_init_state_net(self.p).unsqueeze(0) 
 
             # BOW loss
-            self.bow_logits = self.bow_project(self.p)
+            self.bow_logits = self.bow_project(dec_init)
         
         with variable_scope.variable_scope("recogDecoder"):
             if mode == 'test':
