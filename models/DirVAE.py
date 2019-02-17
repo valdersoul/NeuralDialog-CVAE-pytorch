@@ -40,7 +40,7 @@ class DirVAE(BaseTFModel):
         prior_mean = torch.from_numpy((np.log(self.a).T - np.mean(np.log(self.a), 1)).T)
         prior_var = torch.from_numpy((((1.0 / self.a) * (1 - (2.0 / self.h_dim))).T +
                                  (1.0 / (self.h_dim * self.h_dim)) * np.sum(1.0 / self.a, 1)).T)
-        prior_logvar = self.prior_var.log()
+        prior_logvar = prior_var.log()
 
         self.register_buffer('prior_mean',    prior_mean)
         self.register_buffer('prior_var',     prior_var)
