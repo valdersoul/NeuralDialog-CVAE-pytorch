@@ -257,7 +257,7 @@ class DirVAE(BaseTFModel):
                 dec_outs, _, final_context_state =  decoder_fn_lib.train_loop(self.dec_cell, 
                                                                               self.dec_cell_proj, 
                                                                               dec_input_embedding,
-                                                                              init_state=dec_init_state, 
+                                                                              init_state=dec_init, 
                                                                               context_vector=None, 
                                                                               sequence_length=dec_seq_lens)
 
