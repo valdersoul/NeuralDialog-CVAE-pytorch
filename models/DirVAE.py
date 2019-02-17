@@ -297,7 +297,7 @@ class DirVAE(BaseTFModel):
                 diff_term       = diff * diff / prior_var
                 logvar_division = prior_logvar - posterior_logvar
                 # put KLD together
-                KLD = 0.5 * ( (var_division + diff_term + logvar_division).sum(1) - self.net_arch.num_topic )
+                KLD = 0.5 * ( (var_division + diff_term + logvar_division).sum(1) - self.h_dim )
                 self.avg_kld = torch.mean(KLD)
                 if mode == 'train':
                     kl_weights = min(self.global_t / self.full_kl_step, 1.0)
