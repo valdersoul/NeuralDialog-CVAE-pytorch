@@ -243,7 +243,7 @@ class DirVAE(BaseTFModel):
             self.bow_logits = self.bow_project(self.p)
         
         with variable_scope.variable_scope("recogDecoder"):
-            if model == 'test':
+            if mode == 'test':
                 pass
             else:
                 input_tokens = self.output_tokens[:, :-1]
@@ -266,7 +266,7 @@ class DirVAE(BaseTFModel):
                 else:
                     self.dec_out_words = torch.max(dec_outs, 2)[1]
         
-        if not model == 'test':
+        if not mode == 'test':
             with variable_scope.variable_scope("loss"):
                 labels = self.output_tokens[:, 1:]
                 label_mask = torch.sign(labels).detach().float()
