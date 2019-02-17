@@ -42,6 +42,10 @@ class DirVAE(BaseTFModel):
                                  (1.0 / (self.h_dim * self.h_dim)) * np.sum(1.0 / self.a, 1)).T)
         self.prior_logvar = self.prior_var.log()
 
+        self.register_buffer('prior_mean',    prior_mean)
+        self.register_buffer('prior_var',     prior_var)
+        self.register_buffer('prior_logvar',  prior_logvar)
+
         self.use_profile = config.use_profile
         self.vocab = api.vocab
         self.rev_vocab = api.rev_vocab
