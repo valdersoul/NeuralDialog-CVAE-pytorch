@@ -37,10 +37,10 @@ class DirVAE(BaseTFModel):
         # The approximated Dirchlet function prior
         self.h_dim = config.num_topic
         self.a = 1.*np.ones((1 , self.h_dim)).astype(np.float32)
-        self.prior_mean = torch.from_numpy((np.log(self.a).T - np.mean(np.log(self.a), 1)).T)
-        self.prior_var = torch.from_numpy((((1.0 / self.a) * (1 - (2.0 / self.h_dim))).T +
+        prior_mean = torch.from_numpy((np.log(self.a).T - np.mean(np.log(self.a), 1)).T)
+        prior_var = torch.from_numpy((((1.0 / self.a) * (1 - (2.0 / self.h_dim))).T +
                                  (1.0 / (self.h_dim * self.h_dim)) * np.sum(1.0 / self.a, 1)).T)
-        self.prior_logvar = self.prior_var.log()
+        prior_logvar = self.prior_var.log()
 
         self.register_buffer('prior_mean',    prior_mean)
         self.register_buffer('prior_var',     prior_var)
