@@ -110,7 +110,7 @@ class DirVAE(BaseTFModel):
 
         # BOW loss
         self.bow_project = nn.Sequential(
-            nn.Linear(self.dec_cell_size, 400),
+            nn.Linear(self.h_dim, 400),
             nn.Tanh(),
             nn.Dropout(1 - config.keep_prob),
             nn.Linear(400, self.vocab_size)
