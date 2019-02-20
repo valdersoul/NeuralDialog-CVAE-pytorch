@@ -481,6 +481,12 @@ class DirVAE(BaseTFModel):
                                                             self.avg_rc_loss.item(),\
                                                             self.rc_ppl.item(),\
                                                             self.avg_kld.item()
+            elbo_loss, bow_loss, rc_loss, rc_ppl, kl_loss = self.elbo_recog.item(),\
+                                                            self.avg_bow_loss.item(),\
+                                                            self.avg_rc_loss_recog.item(),\
+                                                            self.rc_ppl_recog.item(),\
+                                                            self.avg_kld_recog.item()
+
             elbo_losses.append(elbo_loss)
             rc_losses.append(rc_loss)
             rc_ppls.append(rc_ppl)
