@@ -599,7 +599,7 @@ class KgRnnCVAE(BaseTFModel):
             batch = valid_feed.next_batch()
             if batch is None:
                 break
-            feed_dict = self.batch_2_feed(batch, None, use_prior=False, repeat=1)
+            feed_dict = self.batch_2_feed(batch, None, use_prior=True, repeat=1)
             with torch.no_grad():
                 self.forward(feed_dict, mode='valid',  use_profile=use_profile)
             elbo_loss, bow_loss, rc_loss, rc_ppl, kl_loss = self.elbo.item(),\
