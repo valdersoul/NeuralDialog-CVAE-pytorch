@@ -93,8 +93,14 @@ class DirVAE(BaseTFModel):
         self.mean_fc = nn.Linear(recog_input_size, self.h_dim)
         self.mean_bn    = nn.BatchNorm1d(self.h_dim)                   # bn for mean
         self.logvar_bn  = nn.BatchNorm1d(self.h_dim)               # bn for logvar
+        self.decoder_bn = nn.BatchNorm1d(self.vocab_size)
         self.logvar_bn.weight.requires_grad = False
         self.mean_bn.weight.requires_grad = False
+        self.decoder_bn.requires_grad = False
+
+        self.logvar_bn.weight.fill_(1)
+        self.mean_bn.weight.fill_(1)
+        self.decoder_bn.weight.fill_(1)
         
         # generation work in topicVae logp(x|z)p(z)
         self.dec_init_state_net = nn.Linear(self.h_dim, self.dec_cell_size)
@@ -110,10 +116,8 @@ class DirVAE(BaseTFModel):
 
         # BOW loss
         self.bow_project = nn.Sequential(
-            nn.Linear(self.h_dim, 400),
-            nn.Tanh(),
-            nn.Dropout(1 - config.keep_prob),
-            nn.Linear(400, self.vocab_size)
+            nn.Linear(self.h_dim, self.vocab_size),
+            self.decoder_bn
         )
 
         self.build_optimizer(config, log_dir)
