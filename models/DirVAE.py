@@ -96,7 +96,7 @@ class DirVAE(BaseTFModel):
         self.decoder_bn = nn.BatchNorm1d(self.vocab_size)
         self.logvar_bn.weight.requires_grad = False
         self.mean_bn.weight.requires_grad = False
-        self.decoder_bn.requires_grad = False
+        self.decoder_bn.weight.requires_grad = False
 
         self.logvar_bn.weight.fill_(1)
         self.mean_bn.weight.fill_(1)
@@ -424,6 +424,6 @@ class DirVAE(BaseTFModel):
             bow_losses.append(bow_loss)
             kl_losses.append(kl_loss)
 
-        avg_losses = self.print_loss(name, ["elbo_loss", "bow_loss", "rc_loss", "rc_peplexity", "kl_loss"],
-                                    [elbo_losses, bow_losses, rc_losses, rc_ppls, kl_losses], "")
-        return avg_losses, ["elbo_loss", "bow_loss", "rc_loss", "rc_peplexity", "kl_loss"]
+        avg_losses = self.print_loss(name, ["rc_loss", "bow_loss", "elbo_loss", "rc_peplexity", "kl_loss"],
+                                    [rc_losses, bow_losses, elbo_losses, rc_ppls, kl_losses], "")
+        return avg_losses, ["rc_loss", "bow_loss", "elbo_loss", "rc_peplexity", "kl_loss"]
