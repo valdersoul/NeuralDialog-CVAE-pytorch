@@ -271,6 +271,7 @@ class DirVAE(BaseTFModel):
         with variable_scope.variable_scope("RecogGeneration"):
             recong_init = torch.cat([z, cond_embedding], -1)
             recog_dec_init = self.dec_init_state_net_all(recong_init)
+            recog_dec_init = recog_dec_init.unsqueeze(0)
 
         with variable_scope.variable_scope("PriorGeneration"):
             dec_init = self.dec_init_state_net(z)
