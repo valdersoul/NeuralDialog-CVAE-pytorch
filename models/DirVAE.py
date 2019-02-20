@@ -457,7 +457,7 @@ class DirVAE(BaseTFModel):
             torch.cuda.synchronize()
             epoch_time = time.time() - start_time
             avg_losses = self.print_loss("Epoch Done", loss_names,
-                                        [elbo_losses, bow_losses, rc_losses, rc_ppls, kl_losses],
+                                        [elbo_losses, bow_losses, rc_losses, rc_ppls, kl_losses, rc_recog_loss, rc_recog_ppl, kl_recog_loss],
                                         "step time %.4f" % (epoch_time / train_feed.num_batch))
 
             return global_t, avg_losses[0]
