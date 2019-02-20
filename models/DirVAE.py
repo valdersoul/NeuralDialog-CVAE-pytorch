@@ -86,11 +86,23 @@ class DirVAE(BaseTFModel):
         # contextRNN for input context and profile
         self.enc_cell = self.get_rnncell(config.cell_type, joint_embedding_size, self.context_cell_size, keep_prob=1.0, num_layer=config.num_layer)
         cond_embedding_size = self.context_cell_size * 2 if config.use_profile else self.context_cell_size
+        
+        # ReconNetwork from condition, with prior
+        recog_input_size = cond_embedding_size
+        self.recog_logvar_fc = nn.Linear(recog_input_size, self.h_dim)
+        self.recog_mean_fc = nn.Linear(recog_input_size, self.h_dim)
+        self.recog_logvar_bn = nn.BatchNorm1d(self.h_dim)
+        self.recog_mean_bn = nn.BatchNorm1d(self.h_dim)
+        self.recog_logvar_bn.weight.requires_grad = False
+        self.recog_mean_bn.weight.requires_grad = False
 
-        # recoginitionNetwork for response, with approximated Dirchlet function
-        recog_input_size = output_embedding_size
-        self.logvar_fc = nn.Linear(recog_input_size, self.h_dim)
-        self.mean_fc = nn.Linear(recog_input_size, self.h_dim)
+        self.recog_logvar_bn.weight.fill_(1)
+        self.recog_mean_bn.weight.fill_(1)
+
+        # PriorNetwork for response, with approximated Dirchlet function
+        prior_input_size = output_embedding_size
+        self.logvar_fc = nn.Linear(prior_input_size, self.h_dim)
+        self.mean_fc = nn.Linear(prior_input_size, self.h_dim)
         self.mean_bn    = nn.BatchNorm1d(self.h_dim)                   # bn for mean
         self.logvar_bn  = nn.BatchNorm1d(self.h_dim)               # bn for logvar
         self.decoder_bn = nn.BatchNorm1d(self.vocab_size)
@@ -105,13 +117,13 @@ class DirVAE(BaseTFModel):
         # generation work in topicVae logp(x|z)p(z)
         self.dec_init_state_net = nn.Linear(self.h_dim, self.dec_cell_size)
         dec_input_embedding_size = self.embed_size
-        self.rec_dec_cell = self.get_rnncell(config.cell_type, dec_input_embedding_size, self.dec_cell_size, config.keep_prob, config.num_layer)
+        self.dec_cell = self.get_rnncell(config.cell_type, dec_input_embedding_size, self.dec_cell_size, config.keep_prob, config.num_layer)
         self.dec_cell_proj = nn.Linear(self.dec_cell_size, self.vocab_size)
 
         # generation work with latent and condition
         dec_all_input_size = self.h_dim + cond_embedding_size
         self.dec_init_state_net_all = nn.Linear(dec_all_input_size, self.dec_cell_size)
-        self.dec_cell = self.get_rnncell(config.cell_type, dec_input_embedding_size, self.dec_cell_size, config.keep_prob, config.num_layer)
+        self.rec_dec_cell = self.get_rnncell(config.cell_type, dec_input_embedding_size, self.dec_cell_size, config.keep_prob, config.num_layer)
         self.dec_cell_proj_all = nn.Linear(self.dec_cell_size, self.vocab_size)
 
         # BOW loss
@@ -230,10 +242,23 @@ class DirVAE(BaseTFModel):
 
         cond_embedding = torch.cat([enc_last_state, enc_last_state_profile], 1) if use_profile else enc_last_state
 
-        with variable_scope.variable_scope("recognitionNetwork"):
-            recog_input = output_embedding
-            posterior_mean   = self.mean_bn  (self.mean_fc  (recog_input))          # posterior mean
-            posterior_logvar = self.logvar_bn(self.logvar_fc(recog_input))          # posterior log variance
+        with variable_scope.variable_scope("RecogNetwork"):
+            recog_input = cond_embedding
+            recog_posterior_mean = self.recog_mean_bn(self.recog_mean_fc(recog_input))
+            recog_posterior_logvar = self.recog_logvar_bn(self.recog_logvar_fc(recog_input))
+            recog_posterior_var = recog_posterior_logvar.exp()
+            
+            # take sample
+            eps = recog_posterior_mean.data.new().resize_as_(recog_posterior_mean.data).normal_(0,1) # noise
+            recog_z = recog_posterior_mean + recog_posterior_var.sqrt() * eps                 # reparameterization
+            self.recog_p = F.softmax(recog_z, -1)
+            if self.keep_prob < 1.0:
+                self.recog_p = F.dropout(self.recog_p, 1 - self.keep_prob, self.training)
+
+        with variable_scope.variable_scope("PriorNetwork"):
+            prior_input = output_embedding
+            posterior_mean   = self.mean_bn  (self.mean_fc  (prior_input))          # posterior mean
+            posterior_logvar = self.logvar_bn(self.logvar_fc(prior_input))          # posterior log variance
             posterior_var    = posterior_logvar.exp()
 
             # take sample
@@ -243,17 +268,29 @@ class DirVAE(BaseTFModel):
             if self.keep_prob < 1.0:
                 self.p = F.dropout(self.p, 1 - self.keep_prob, self.training)
 
+        with variable_scope.variable_scope("RecogGeneration"):
+            recong_init = torch.cat([z, cond_embedding], -1)
+            recog_dec_init = self.dec_init_state_net_all(recong_init)
 
-        with variable_scope.variable_scope("recognitionGeneration"):
+        with variable_scope.variable_scope("PriorGeneration"):
             dec_init = self.dec_init_state_net(z)
 
             # BOW loss
             self.bow_logits = self.bow_project(self.p)
             dec_init = dec_init.unsqueeze(0)
         
-        with variable_scope.variable_scope("recogDecoder"):
+        with variable_scope.variable_scope("Decoder"):
             if mode == 'test':
-                pass
+                dec_outs, _, final_context_state = decoder_fn_lib.inference_loop(self.rec_dec_cell, 
+                                                                    self.dec_cell_proj, 
+                                                                    self.embedding,
+                                                                    encoder_state = dec_init_state,
+                                                                    start_of_sequence_id=self.go_id,
+                                                                    end_of_sequence_id=self.eos_id,
+                                                                    maximum_length=self.max_utt_len,
+                                                                    num_decoder_symbols=self.vocab_size,
+                                                                    context_vector=None,
+                                                                    decode_type='greedy')
             else:
                 input_tokens = self.output_tokens[:, :-1]
                 if self.dec_keep_prob < 1.0:
@@ -263,30 +300,42 @@ class DirVAE(BaseTFModel):
                 dec_input_embedding = self.embedding(input_tokens)
                 dec_seq_lens = self.output_lens - 1
                 dec_input_embedding = F.dropout(dec_input_embedding, 1 - self.keep_prob, self.training)
+                # prior decoder
                 dec_outs, _, final_context_state =  decoder_fn_lib.train_loop(self.dec_cell, 
                                                                               self.dec_cell_proj, 
                                                                               dec_input_embedding,
                                                                               init_state=dec_init, 
                                                                               context_vector=None, 
                                                                               sequence_length=dec_seq_lens)
+                # recog decoder
+                dec_outs_recog, _, final_context_state_recog = decoder_fn_lib.train_loop(self.rec_dec_cell, 
+                                                                              self.dec_cell_proj_all, 
+                                                                              dec_input_embedding,
+                                                                              init_state=recog_dec_init, 
+                                                                              context_vector=None, 
+                                                                              sequence_length=dec_seq_lens)
 
                 if final_context_state is not None:
                     self.dec_out_words = final_context_state
+                    self.dec_out_words_recog = final_context_state_recog
                 else:
                     self.dec_out_words = torch.max(dec_outs, 2)[1]
+                    self.dec_out_words_recog = torch.max(dec_outs_recog, 2)[1]
         
         if not mode == 'test':
             with variable_scope.variable_scope("loss"):
                 labels = self.output_tokens[:, 1:]
                 label_mask = torch.sign(labels).detach().float()
 
-                # rc_loss = tf.nn.sparse_softmax_cross_entropy_with_logits(logits=dec_outs, labels=labels)
-                rc_loss = F.cross_entropy(dec_outs.view(-1, dec_outs.size(-1)), labels.reshape(-1), reduce=False).view(dec_outs.size()[:-1])
-                # print(rc_loss * label_mask)
-                rc_loss = torch.sum(rc_loss * label_mask, 1)
-                self.avg_rc_loss = rc_loss.mean()
-                # used only for perpliexty calculation. Not used for optimzation
-                self.rc_ppl = torch.exp(torch.sum(rc_loss) / torch.sum(label_mask))
+                # # rc_loss = tf.nn.sparse_softmax_cross_entropy_with_logits(logits=dec_outs, labels=labels)
+                # rc_loss = F.cross_entropy(dec_outs.view(-1, dec_outs.size(-1)), labels.reshape(-1), reduce=False).view(dec_outs.size()[:-1])
+                # # print(rc_loss * label_mask)
+                # rc_loss = torch.sum(rc_loss * label_mask, 1)
+                # self.avg_rc_loss = rc_loss.mean()
+                # # used only for perpliexty calculation. Not used for optimzation
+                # self.rc_ppl = torch.exp(torch.sum(rc_loss) / torch.sum(label_mask))
+                self.avg_rc_loss, self.rc_ppl = self.rc_loss(dec_outs, labels, label_mask)
+                self.avg_rc_loss_recog, self.rc_ppl_recog = self.rc_loss(dec_outs_recog, labels, label_mask)
 
                 """ as n-trial multimodal distribution. """
                 # bow_loss = tf.nn.sparse_softmax_cross_entropy_with_logits(logits=tile_bow_logits, labels=labels) * label_mask
@@ -297,13 +346,16 @@ class DirVAE(BaseTFModel):
                 prior_mean   = self.prior_mean.expand_as(posterior_mean)
                 prior_var    = self.prior_var.expand_as(posterior_mean)
                 prior_logvar = self.prior_logvar.expand_as(posterior_mean)
-                var_division    = posterior_var  / prior_var
-                diff            = posterior_mean - prior_mean
-                diff_term       = diff * diff / prior_var
-                logvar_division = prior_logvar - posterior_logvar
-                # put KLD together
-                KLD = 0.5 * ( (var_division + diff_term + logvar_division).sum(1) - self.h_dim )
-                self.avg_kld = torch.mean(KLD)
+                # var_division    = posterior_var  / prior_var
+                # diff            = posterior_mean - prior_mean
+                # diff_term       = diff * diff / prior_var
+                # logvar_division = prior_logvar - posterior_logvar
+                # # put KLD together
+                # KLD = 0.5 * ( (var_division + diff_term + logvar_division).sum(1) - self.h_dim )
+                # self.avg_kld = torch.mean(KLD)
+                self.avg_kld = self.kld(prior_mean, prior_logvar, posterior_mean, posterior_logvar)
+                self.avg_kld_recog = self.kld(posterior_mean, posterior_logvar, recog_posterior_mean, recog_posterior_logvar)
+
                 if mode == 'train':
                     kl_weights = min(self.global_t / self.full_kl_step, 1.0)
                 else:
@@ -311,7 +363,8 @@ class DirVAE(BaseTFModel):
                 
                 self.kl_w = kl_weights
                 self.elbo = self.avg_rc_loss + kl_weights * self.avg_kld
-                self.aug_elbo = self.avg_bow_loss + self.elbo
+                self.elbo_recog = self.avg_rc_loss_recog + kl_weights * self.avg_kld_recog
+                self.aug_elbo = self.avg_bow_loss + self.elbo + self.elbo_recog
 
                 self.summary_op = [\
                     tb.summary.scalar("model/loss/rc_loss", self.avg_rc_loss.item()),
@@ -353,12 +406,15 @@ class DirVAE(BaseTFModel):
     def train_model(self, global_t, train_feed, update_limit=5000, use_profile=False):
             elbo_losses = []
             rc_losses = []
+            rc_recog_losses = []
             rc_ppls = []
+            rc_recog_ppls = []
+            kl_recog_losses = []
             kl_losses = []
             bow_losses = []
             local_t = 0
             start_time = time.time()
-            loss_names =  ["elbo_loss", "bow_loss", "rc_loss", "rc_peplexity", "kl_loss"]
+            loss_names =  ["elbo_loss", "bow_loss", "rc_loss", "rc_peplexity", "kl_loss", "rc_recog_loss", "rc_recog_perplexity", "kl_recog_loss"]
             while True:
                 batch = train_feed.next_batch()
                 if batch is None:
@@ -367,11 +423,14 @@ class DirVAE(BaseTFModel):
                     break
                 feed_dict = self.batch_2_feed(batch, global_t, use_prior=False)
                 self.forward(feed_dict, mode='train', use_profile=use_profile)
-                elbo_loss, bow_loss, rc_loss, rc_ppl, kl_loss = self.elbo.item(),\
+                elbo_loss, bow_loss, rc_loss, rc_ppl, kl_loss, rc_recog_loss, rc_recog_ppl, kl_recog_loss = self.elbo.item(),\
                                                                 self.avg_bow_loss.item(),\
                                                                 self.avg_rc_loss.item(),\
                                                                 self.rc_ppl.item(),\
-                                                                self.avg_kld.item()
+                                                                self.avg_kld.item(),\
+                                                                self.avg_rc_loss_recog.item(),\
+                                                                self.rc_ppl_recog.item(),\
+                                                                self.avg_kld_recog.item(),\
 
                 self.optimize(self.aug_elbo)
                 # print(elbo_loss, bow_loss, rc_loss, rc_ppl, kl_loss)
@@ -380,15 +439,18 @@ class DirVAE(BaseTFModel):
                 elbo_losses.append(elbo_loss)
                 bow_losses.append(bow_loss)
                 rc_ppls.append(rc_ppl)
+                rc_recog_ppls.append(rc_recog_ppl)
                 rc_losses.append(rc_loss)
+                rc_recog_losses.append(rc_recog_loss)
                 kl_losses.append(kl_loss)
+                kl_recog_losses.append(kl_recog_loss)
 
                 global_t += 1
                 local_t += 1
                 if local_t % (train_feed.num_batch // 10) == 0:
                     kl_w = self.kl_w
                     self.print_loss("%.2f" % (train_feed.ptr / float(train_feed.num_batch)),
-                                    loss_names, [elbo_losses, bow_losses, rc_losses, rc_ppls, kl_losses], "kl_w %f" % kl_w)
+                                    loss_names, [elbo_losses, bow_losses, rc_losses, rc_ppls, kl_losses, rc_recog_losses, rc_recog_ppls, kl_recog_losses], "kl_w %f" % kl_w)
 
             # finish epoch!
             torch.cuda.synchronize()
@@ -427,3 +489,24 @@ class DirVAE(BaseTFModel):
         avg_losses = self.print_loss(name, ["rc_loss", "bow_loss", "elbo_loss", "rc_peplexity", "kl_loss"],
                                     [rc_losses, bow_losses, elbo_losses, rc_ppls, kl_losses], "")
         return avg_losses, ["rc_loss", "bow_loss", "elbo_loss", "rc_peplexity", "kl_loss"]
+
+    def rc_loss(self, dec_outs, labels, label_mask):
+        # rc_loss = tf.nn.sparse_softmax_cross_entropy_with_logits(logits=dec_outs, labels=labels)
+        rc_loss = F.cross_entropy(dec_outs.view(-1, dec_outs.size(-1)), labels.reshape(-1), reduce=False).view(dec_outs.size()[:-1])
+        # print(rc_loss * label_mask)
+        rc_loss = torch.sum(rc_loss * label_mask, 1)
+        avg_rc_loss = rc_loss.mean()
+        # used only for perpliexty calculation. Not used for optimzation
+        rc_ppl = torch.exp(torch.sum(rc_loss) / torch.sum(label_mask))
+        return avg_rc_loss, rc_ppl
+    
+    def kld(self, prior_mean, prior_logvar, posterior_mean, posterior_logvar):
+        prior_var = prior_logvar.exp()
+        posterior_var = posterior_logvar.exp()
+        var_division    = posterior_var  / prior_var
+        diff            = posterior_mean - prior_mean
+        diff_term       = diff * diff / prior_var
+        logvar_division = prior_logvar - posterior_logvar
+        # put KLD together
+        KLD = 0.5 * ( (var_division + diff_term + logvar_division).sum(1) - self.h_dim )
+        return torch.mean(KLD)
