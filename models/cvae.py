@@ -443,6 +443,8 @@ class KgRnnCVAE(BaseTFModel):
             # dec_outs, _, final_context_state = dynamic_rnn_decoder(dec_cell, loop_func, inputs=dec_input_embedding, sequence_length=dec_seq_lens)
             if final_context_state is not None:
                 self.dec_out_words = final_context_state
+                if self.use_prior:
+                    self.dec_out_words_recog = final_context_state_recog
             else:
                 self.dec_out_words = torch.max(dec_outs, 2)[1]
                 if self.use_prior:
@@ -533,7 +535,7 @@ class KgRnnCVAE(BaseTFModel):
             tiled_feed_dict = {}
             for key, val in feed_dict.items():
                 if key == "use_prior":
-                    tiled_feed_dict[key] = val
+                    tiled_feed_dict[key] = use_prior
                     continue
                 if val is None:
                     tiled_feed_dict[key] = None
