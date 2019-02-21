@@ -686,14 +686,14 @@ class KgRnnCVAE(BaseTFModel):
                 #pred_da = np.argmax(sample_das[r_id], axis=1)[0]
                 pred_tokens = [self.vocab[e] for e in pred_outs[b_id].tolist() if e != self.eos_id and e != 0]
                 pred_str = " ".join(pred_tokens).replace(" ' ", "'")
-                dest.write("Sample %d  >> %s\n" % (r_id, pred_str))
+                dest.write("Sample %d  >> %s\n" % (0, pred_str))
                 local_tokens.append(pred_tokens)
 
                 pred_outs = sample_words_recog
                 #pred_da = np.argmax(sample_das[r_id], axis=1)[0]
                 pred_tokens = [self.vocab[e] for e in pred_outs[b_id].tolist() if e != self.eos_id and e != 0]
                 pred_str = " ".join(pred_tokens).replace(" ' ", "'")
-                dest.write("Sample %d  >> %s\n" % (r_id, pred_str))
+                dest.write("Sample %d  >> %s\n" % (1, pred_str))
                 local_tokens.append(pred_tokens)
 
 
