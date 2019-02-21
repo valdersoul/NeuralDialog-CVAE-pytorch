@@ -283,9 +283,9 @@ class DirVAE(BaseTFModel):
         with variable_scope.variable_scope("Decoder"):
             if mode == 'test':
                 dec_outs, _, final_context_state = decoder_fn_lib.inference_loop(self.rec_dec_cell, 
-                                                                    self.dec_cell_proj, 
+                                                                    self.dec_cell_proj_all, 
                                                                     self.embedding,
-                                                                    encoder_state = dec_init_state,
+                                                                    encoder_state = recog_dec_init,
                                                                     start_of_sequence_id=self.go_id,
                                                                     end_of_sequence_id=self.eos_id,
                                                                     maximum_length=self.max_utt_len,
@@ -496,6 +496,73 @@ class DirVAE(BaseTFModel):
         avg_losses = self.print_loss(name, ["rc_loss", "bow_loss", "elbo_loss", "rc_peplexity", "kl_loss"],
                                     [rc_losses, bow_losses, elbo_losses, rc_ppls, kl_losses], "")
         return avg_losses, ["rc_loss", "bow_loss", "elbo_loss", "rc_peplexity", "kl_loss"]
+
+    def test_model(self, test_feed, num_batch=None, repeat=5, dest=sys.stdout, use_profile=False):
+        local_t = 0
+        recall_bleus = []
+        prec_bleus = []
+
+        while True:
+            batch = test_feed.next_batch()
+            if batch is None or (num_batch is not None and local_t > num_batch):
+                break
+            feed_dict = self.batch_2_feed(batch, None, use_prior=True, repeat=1)
+            with torch.no_grad():
+                self.forward(feed_dict, mode='test', use_profile=use_profile)
+            word_outs = self.dec_out_words.cpu().numpy()
+            sample_words = word_outs #np.split(word_outs, repeat, axis=0)
+
+            true_floor = feed_dict["floors"].cpu().numpy()
+            true_srcs = feed_dict["input_contexts"].cpu().numpy()
+            true_src_lens = feed_dict["context_lens"].cpu().numpy()
+            true_outs = feed_dict["output_tokens"].cpu().numpy()
+            profile = feed_dict["profile_contexts"].cpu().numpy()
+            #true_topics = feed_dict["topics"].cpu().numpy()
+            #true_das = feed_dict["output_das"].cpu().numpy()
+            local_t += 1
+
+            if dest != sys.stdout:
+                if local_t % (test_feed.num_batch // 10) == 0:
+                    print("%.2f >> " % (test_feed.ptr / float(test_feed.num_batch))),
+
+            for b_id in range(test_feed.batch_size):
+                # print the dialog context
+                start = np.maximum(0, true_src_lens[b_id]-5)
+                for t_id in range(start, true_srcs.shape[1], 1):
+                    src_str = " ".join([self.vocab[e] for e in true_srcs[b_id, t_id].tolist() if e != 0])
+                    dest.write("Src %d-%d: %s\n" % (t_id, true_floor[b_id, t_id], src_str))
+                for p_id in range(profile.shape[1]):
+                    profile_str = " ".join([self.vocab[e] for e in profile[b_id, p_id].tolist() if e != 0])
+                    dest.write("Profile %d-%d: %s\n" % (p_id, 1, profile_str))
+                # print the true outputs
+                true_tokens = [self.vocab[e] for e in true_outs[b_id].tolist() if e not in [0, self.eos_id, self.go_id]]
+                true_str = " ".join(true_tokens).replace(" ' ", "'")
+                #da_str = self.da_vocab[true_das[b_id]]
+                # print the predicted outputs
+                dest.write("Target  >> %s\n" % ( true_str))
+                local_tokens = []
+
+                pred_outs = sample_words
+                #pred_da = np.argmax(sample_das[r_id], axis=1)[0]
+                pred_tokens = [self.vocab[e] for e in pred_outs[b_id].tolist() if e != self.eos_id and e != 0]
+                pred_str = " ".join(pred_tokens).replace(" ' ", "'")
+                dest.write("Sample %d  >> %s\n" % (0, pred_str))
+                local_tokens.append(pred_tokens)
+
+                max_bleu, avg_bleu = utils.get_bleu_stats(true_tokens, local_tokens)
+                recall_bleus.append(max_bleu)
+                prec_bleus.append(avg_bleu)
+                # make a new line for better readability
+                dest.write("\n")
+
+        avg_recall_bleu = float(np.mean(recall_bleus))
+        avg_prec_bleu = float(np.mean(prec_bleus))
+        avg_f1 = 2*(avg_prec_bleu*avg_recall_bleu) / (avg_prec_bleu+avg_recall_bleu+10e-12)
+        report = "Avg recall BLEU %f, avg precision BLEU %f and F1 %f (only 1 reference response. Not final result)" \
+                 % (avg_recall_bleu, avg_prec_bleu, avg_f1)
+        print(report)
+        dest.write(report + "\n")
+        print("Done testing")
 
     def rc_loss(self, dec_outs, labels, label_mask):
         # rc_loss = tf.nn.sparse_softmax_cross_entropy_with_logits(logits=dec_outs, labels=labels)

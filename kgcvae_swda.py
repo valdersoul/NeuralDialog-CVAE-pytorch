@@ -26,7 +26,7 @@ tf.app.flags.DEFINE_bool("resume", False, "Resume from previous")
 tf.app.flags.DEFINE_bool("forward_only", False, "Only do decoding")
 tf.app.flags.DEFINE_bool("save_model", True, "Create checkpoints")
 tf.app.flags.DEFINE_string("test_path", "run1500783422", "the dir to load checkpoint for forward only")
-tf.app.flags.DEFINE_string("model", "s2s", "model used to train/valid")
+tf.app.flags.DEFINE_string("model", "cvae", "model used to train/valid")
 tf.app.flags.DEFINE_string("data", "both", "data used to train/valid")
 tf.app.flags.DEFINE_integer("number", 0, 'model to load')
 FLAGS = tf.app.flags.FLAGS
@@ -103,7 +103,7 @@ def main():
 
         ckpt = get_checkpoint_state(ckp_dir)
         print("Created models with fresh parameters.")
-        model.apply(lambda m: [torch.nn.init.uniform_(p.data, -1.0 * config.init_w, config.init_w) for p in m.parameters()])
+        #model.apply(lambda m: [torch.nn.init.uniform_(p.data, -1.0 * config.init_w, config.init_w) for p in m.parameters()])
 
         # Load word2vec weight
         if api.word2vec is not None and not FLAGS.forward_only:
@@ -149,7 +149,9 @@ def main():
 
                 # test_feed.epoch_init(test_config.batch_size, test_config.backward_size,
                 #                      test_config.step_size, shuffle=True, intra_shuffle=False)
-                # model.test_model(test_feed, num_batch=5)
+                valid_feed.epoch_init(valid_config.batch_size, valid_config.backward_size,
+                                      valid_config.step_size, shuffle=False, intra_shuffle=False)
+                model.test_model(valid_feed, num_batch=50)
                 model.train()
 
                 done_epoch = epoch + 1
