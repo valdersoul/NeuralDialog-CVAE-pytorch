@@ -282,10 +282,21 @@ class DirVAE(BaseTFModel):
         
         with variable_scope.variable_scope("Decoder"):
             if mode == 'test':
-                dec_outs, _, final_context_state = decoder_fn_lib.inference_loop(self.rec_dec_cell, 
+                dec_outs_recog, _, final_context_state_recog = decoder_fn_lib.inference_loop(self.rec_dec_cell, 
                                                                     self.dec_cell_proj_all, 
                                                                     self.embedding,
                                                                     encoder_state = recog_dec_init,
+                                                                    start_of_sequence_id=self.go_id,
+                                                                    end_of_sequence_id=self.eos_id,
+                                                                    maximum_length=self.max_utt_len,
+                                                                    num_decoder_symbols=self.vocab_size,
+                                                                    context_vector=None,
+                                                                    decode_type='greedy')
+
+                dec_outs, _, final_context_state = decoder_fn_lib.inference_loop(self.dec_cell, 
+                                                                    self.dec_cell_proj, 
+                                                                    self.embedding,
+                                                                    encoder_state = dec_init,
                                                                     start_of_sequence_id=self.go_id,
                                                                     end_of_sequence_id=self.eos_id,
                                                                     maximum_length=self.max_utt_len,
@@ -510,7 +521,10 @@ class DirVAE(BaseTFModel):
             with torch.no_grad():
                 self.forward(feed_dict, mode='test', use_profile=use_profile)
             word_outs = self.dec_out_words.cpu().numpy()
+            word_outs_recog = self.dec_out_words_recog.cpu().numpy()
             sample_words = word_outs #np.split(word_outs, repeat, axis=0)
+            sample_words_recog = word_outs_recog
+            
 
             true_floor = feed_dict["floors"].cpu().numpy()
             true_srcs = feed_dict["input_contexts"].cpu().numpy()
@@ -549,6 +563,13 @@ class DirVAE(BaseTFModel):
                 pred_tokens = [self.vocab[e] for e in pred_outs[b_id].tolist() if e != self.eos_id and e != 0]
                 pred_str = " ".join(pred_tokens).replace(" ' ", "'")
                 dest.write("Sample %d  >> %s\n" % (0, pred_str))
+                local_tokens.append(pred_tokens)
+
+                pred_outs = sample_words_recog
+                #pred_da = np.argmax(sample_das[r_id], axis=1)[0]
+                pred_tokens = [self.vocab[e] for e in pred_outs[b_id].tolist() if e != self.eos_id and e != 0]
+                pred_str = " ".join(pred_tokens).replace(" ' ", "'")
+                dest.write("Sample %d  >> %s\n" % (1, pred_str))
                 local_tokens.append(pred_tokens)
 
                 max_bleu, avg_bleu = utils.get_bleu_stats(true_tokens, local_tokens)
