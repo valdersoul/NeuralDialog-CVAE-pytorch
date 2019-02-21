@@ -442,12 +442,11 @@ class KgRnnCVAE(BaseTFModel):
 
             # dec_outs, _, final_context_state = dynamic_rnn_decoder(dec_cell, loop_func, inputs=dec_input_embedding, sequence_length=dec_seq_lens)
             if final_context_state is not None:
-                #final_context_state = final_context_state[:, 0:dec_outs.size(1)]
                 self.dec_out_words = final_context_state
-                # mask = torch.sign(torch.max(dec_outs, 2)[0]).float()
-                # self.dec_out_words = final_context_state * mask # no need to reverse here unlike original code
             else:
                 self.dec_out_words = torch.max(dec_outs, 2)[1]
+                if self.use_prior:
+                    self.dec_out_words_recog = torch.max(dec_outs_recog, 2)[1]
 
         if not mode == 'test':
             with variable_scope.variable_scope("loss"):
