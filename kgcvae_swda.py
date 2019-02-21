@@ -145,13 +145,13 @@ def main():
                 valid_feed.epoch_init(valid_config.batch_size, valid_config.backward_size,
                                       valid_config.step_size, shuffle=False, intra_shuffle=False)
                 model.eval()
-                valid_loss, loss_names = model.valid_model("ELBO_VALID", valid_feed, use_profile=config.use_profile)
+                model.test_model(valid_feed, num_batch=50)
 
                 # test_feed.epoch_init(test_config.batch_size, test_config.backward_size,
                 #                      test_config.step_size, shuffle=True, intra_shuffle=False)
                 valid_feed.epoch_init(valid_config.batch_size, valid_config.backward_size,
                                       valid_config.step_size, shuffle=False, intra_shuffle=False)
-                model.test_model(valid_feed, num_batch=50)
+                valid_loss, loss_names = model.valid_model("ELBO_VALID", valid_feed, use_profile=config.use_profile)
                 model.train()
 
                 done_epoch = epoch + 1
