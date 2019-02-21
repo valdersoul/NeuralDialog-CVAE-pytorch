@@ -636,7 +636,8 @@ class KgRnnCVAE(BaseTFModel):
             true_srcs = feed_dict["input_contexts"].cpu().numpy()
             true_src_lens = feed_dict["context_lens"].cpu().numpy()
             true_outs = feed_dict["output_tokens"].cpu().numpy()
-            profile = feed_dict["profile_contexts"].cpu().numpy()
+            if use_profile:
+                profile = feed_dict["profile_contexts"].cpu().numpy()
             #true_topics = feed_dict["topics"].cpu().numpy()
             #true_das = feed_dict["output_das"].cpu().numpy()
             local_t += 1
@@ -651,9 +652,10 @@ class KgRnnCVAE(BaseTFModel):
                 for t_id in range(start, true_srcs.shape[1], 1):
                     src_str = " ".join([self.vocab[e] for e in true_srcs[b_id, t_id].tolist() if e != 0])
                     dest.write("Src %d-%d: %s\n" % (t_id, true_floor[b_id, t_id], src_str))
-                for p_id in range(profile.shape[1]):
-                    profile_str = " ".join([self.vocab[e] for e in profile[b_id, p_id].tolist() if e != 0])
-                    dest.write("Profile %d-%d: %s\n" % (p_id, 1, profile_str))
+                if use_profile:
+                    for p_id in range(profile.shape[1]):
+                        profile_str = " ".join([self.vocab[e] for e in profile[b_id, p_id].tolist() if e != 0])
+                        dest.write("Profile %d-%d: %s\n" % (p_id, 1, profile_str))
                 # print the true outputs
                 true_tokens = [self.vocab[e] for e in true_outs[b_id].tolist() if e not in [0, self.eos_id, self.go_id]]
                 true_str = " ".join(true_tokens).replace(" ' ", "'")
