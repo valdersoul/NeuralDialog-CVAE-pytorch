@@ -913,6 +913,8 @@ class S2S(BaseTFModel):
 
             if final_context_state is not None:
                 self.dec_out_words = final_context_state
+                if self.use_prior:
+                    self.dec_out_words_recog = final_context_state_recog
             else:
                 self.dec_out_words = torch.max(dec_outs, 2)[1]
                 if self.use_prior:
