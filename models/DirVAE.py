@@ -327,12 +327,12 @@ class DirVAE(BaseTFModel):
                                                                               context_vector=None, 
                                                                               sequence_length=dec_seq_lens)
 
-                if final_context_state is not None:
-                    self.dec_out_words = final_context_state
-                    self.dec_out_words_recog = final_context_state_recog
-                else:
-                    self.dec_out_words = torch.max(dec_outs, 2)[1]
-                    self.dec_out_words_recog = torch.max(dec_outs_recog, 2)[1]
+            if final_context_state is not None:
+                self.dec_out_words = final_context_state
+                self.dec_out_words_recog = final_context_state_recog
+            else:
+                self.dec_out_words = torch.max(dec_outs, 2)[1]
+                self.dec_out_words_recog = torch.max(dec_outs_recog, 2)[1]
         
         if not mode == 'test':
             with variable_scope.variable_scope("loss"):
@@ -465,7 +465,7 @@ class DirVAE(BaseTFModel):
                                     loss_names, [elbo_losses, bow_losses, rc_losses, rc_ppls, kl_losses, rc_recog_losses, rc_recog_ppls, kl_recog_losses], "kl_w %f" % kl_w)
 
             # finish epoch!
-            torch.cuda.synchronize()
+            #torch.cuda.synchronize()
             epoch_time = time.time() - start_time
             avg_losses = self.print_loss("Epoch Done", loss_names,
                                         [elbo_losses, bow_losses, rc_losses, rc_ppls, kl_losses, rc_recog_loss, rc_recog_ppl, kl_recog_loss],
@@ -524,7 +524,6 @@ class DirVAE(BaseTFModel):
             word_outs_recog = self.dec_out_words_recog.cpu().numpy()
             sample_words = word_outs #np.split(word_outs, repeat, axis=0)
             sample_words_recog = word_outs_recog
-            
 
             true_floor = feed_dict["floors"].cpu().numpy()
             true_srcs = feed_dict["input_contexts"].cpu().numpy()
