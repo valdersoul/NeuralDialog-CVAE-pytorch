@@ -358,11 +358,14 @@ class KgRnnCVAE(BaseTFModel):
             # use sampled Z or posterior Z
             if self.use_prior:
                 latent_sample = sample_gaussian(prior_mu, prior_logvar)
+                latent_sample_recog = sample_gaussian(recog_mu, recog_logvar)
             else:
                 latent_sample = sample_gaussian(recog_mu, recog_logvar)
 
         with variable_scope.variable_scope("generationNetwork"):
             gen_inputs = torch.cat([cond_embedding, latent_sample], 1)
+            if self.use_prior:
+                gen_inputs_recog = torch.cat([cond_embedding, latent_sample_recog], 1)
 
             # BOW loss
             self.bow_logits = self.bow_project(gen_inputs)
@@ -380,6 +383,8 @@ class KgRnnCVAE(BaseTFModel):
             else:
                 #self.da_logits = gen_inputs.new_zeros(batch_size, self.da_vocab_size)
                 dec_inputs = gen_inputs
+                if self.use_prior:
+                    dec_inputs_recog = gen_inputs_recog
 
             # Decoder
             if self.num_layer > 1:
@@ -387,6 +392,8 @@ class KgRnnCVAE(BaseTFModel):
                 dec_init_state = torch.stack(dec_init_state)
             else:
                 dec_init_state = self.dec_init_state_net(dec_inputs).unsqueeze(0)
+                if self.use_prior:
+                    dec_init_state_recog = self.dec_init_state_net(dec_inputs_recog).unsqueeze(0)
 
         with variable_scope.variable_scope("decoder"):
             if mode == 'test':
@@ -406,7 +413,15 @@ class KgRnnCVAE(BaseTFModel):
                                                                     num_decoder_symbols=self.vocab_size,
                                                                     context_vector=None,
                                                                     decode_type='greedy')
-                # print(final_context_state)
+                
+                dec_outs_recog, _, final_context_state_recog = decoder_fn_lib.inference_loop(self.dec_cell, self.dec_cell_proj, self.embedding,
+                                                                    encoder_state = dec_init_state_recog,
+                                                                    start_of_sequence_id=self.go_id,
+                                                                    end_of_sequence_id=self.eos_id,
+                                                                    maximum_length=self.max_utt_len,
+                                                                    num_decoder_symbols=self.vocab_size,
+                                                                    context_vector=None,
+                                                                    decode_type='greedy')
             else:
                 # loop_func = decoder_fn_lib.context_decoder_fn_train(dec_init_state, selected_attribute_embedding)
                 # apply word dropping. Set dropped word to 0
@@ -891,6 +906,8 @@ class S2S(BaseTFModel):
                 self.dec_out_words = final_context_state
             else:
                 self.dec_out_words = torch.max(dec_outs, 2)[1]
+                if self.use_prior:
+                    self.dec_out_words_recog = torch.max(dec_outs_recog, 2)[1]
 
         if not mode == 'test':
             with variable_scope.variable_scope("loss"):
@@ -1013,7 +1030,9 @@ class S2S(BaseTFModel):
             with torch.no_grad():
                 self.forward(feed_dict, mode='test', use_profile=use_profile)
             word_outs = self.dec_out_words.cpu().numpy()
+            word_outs_recog = self.dec_out_words_recog.cpu().numpy()
             sample_words = word_outs #np.split(word_outs, repeat, axis=0)
+            sample_words_recog = word_outs_recog
 
             true_floor = feed_dict["floors"].cpu().numpy()
             true_srcs = feed_dict["input_contexts"].cpu().numpy()
@@ -1050,6 +1069,13 @@ class S2S(BaseTFModel):
                 pred_tokens = [self.vocab[e] for e in pred_outs[b_id].tolist() if e != self.eos_id and e != 0]
                 pred_str = " ".join(pred_tokens).replace(" ' ", "'")
                 dest.write("Sample %d  >> %s\n" % (0, pred_str))
+                local_tokens.append(pred_tokens)
+
+                pred_outs = sample_words_recog
+                #pred_da = np.argmax(sample_das[r_id], axis=1)[0]
+                pred_tokens = [self.vocab[e] for e in pred_outs[b_id].tolist() if e != self.eos_id and e != 0]
+                pred_str = " ".join(pred_tokens).replace(" ' ", "'")
+                dest.write("Sample %d  >> %s\n" % (1, pred_str))
                 local_tokens.append(pred_tokens)
 
                 max_bleu, avg_bleu = utils.get_bleu_stats(true_tokens, local_tokens)
