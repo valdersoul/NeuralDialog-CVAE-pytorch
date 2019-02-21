@@ -447,8 +447,6 @@ class KgRnnCVAE(BaseTFModel):
                     self.dec_out_words_recog = final_context_state_recog
             else:
                 self.dec_out_words = torch.max(dec_outs, 2)[1]
-                if self.use_prior:
-                    self.dec_out_words_recog = torch.max(dec_outs_recog, 2)[1]
 
         if not mode == 'test':
             with variable_scope.variable_scope("loss"):
