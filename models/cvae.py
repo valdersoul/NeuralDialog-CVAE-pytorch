@@ -645,7 +645,9 @@ class KgRnnCVAE(BaseTFModel):
             with torch.no_grad():
                 self.forward(feed_dict, mode='test', use_profile=use_profile)
             word_outs = self.dec_out_words.cpu().numpy()
-            sample_words = np.split(word_outs, repeat, axis=0)
+            word_outs_recog = self.dec_out_words_recog.cpu().numpy()
+            sample_words = word_outs #np.split(word_outs, repeat, axis=0)
+            sample_words_recog = word_outs_recog
 
             true_floor = feed_dict["floors"].cpu().numpy()
             true_srcs = feed_dict["input_contexts"].cpu().numpy()
@@ -685,6 +687,14 @@ class KgRnnCVAE(BaseTFModel):
                     pred_str = " ".join(pred_tokens).replace(" ' ", "'")
                     dest.write("Sample %d  >> %s\n" % (r_id, pred_str))
                     local_tokens.append(pred_tokens)
+
+                    pred_outs = sample_words_recog[r_id]
+                    #pred_da = np.argmax(sample_das[r_id], axis=1)[0]
+                    pred_tokens = [self.vocab[e] for e in pred_outs[b_id].tolist() if e != self.eos_id and e != 0]
+                    pred_str = " ".join(pred_tokens).replace(" ' ", "'")
+                    dest.write("Sample %d  >> %s\n" % (r_id, pred_str))
+                    local_tokens.append(pred_tokens)
+
 
                 max_bleu, avg_bleu = utils.get_bleu_stats(true_tokens, local_tokens)
                 recall_bleus.append(max_bleu)
