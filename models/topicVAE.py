@@ -347,7 +347,7 @@ class TopicVAE(BaseTFModel):
                                                                               self.dec_cell_proj, 
                                                                               dec_input_embedding, 
                                                                               init_state=dec_init_state, 
-                                                                              context_vector=selected_attribute_embedding, 
+                                                                              context_vector=selected_attribute_embedding if self.use_hcf else None, 
                                                                               sequence_length=dec_seq_lens)
                 
                 dec_outs, _, final_context_state =  decoder_fn_lib.train_loop(self.dec_cell_res, 
