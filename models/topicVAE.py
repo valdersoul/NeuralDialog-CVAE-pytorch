@@ -276,7 +276,7 @@ class TopicVAE(BaseTFModel):
             gen_inputs = torch.cat([cond_embedding, latent_sample], 1)
 
             # BOW loss
-            self.bow_logits = self.bow_project(gen_inputs)
+            self.bow_logits = self.bow_project(latent_sample)
 
             # Y loss
             if self.use_hcf:
