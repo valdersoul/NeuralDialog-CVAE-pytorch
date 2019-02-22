@@ -504,7 +504,7 @@ class TopicVAE(BaseTFModel):
         rc_ppls = []
         bow_losses = []
         kl_losses = []
-
+        rc_ppls_prior = []
         while True:
             batch = valid_feed.next_batch()
             if batch is None:
@@ -512,21 +512,23 @@ class TopicVAE(BaseTFModel):
             feed_dict = self.batch_2_feed(batch, None, use_prior=False, repeat=1)
             with torch.no_grad():
                 self.forward(feed_dict, mode='valid')
-            elbo_loss, bow_loss, rc_loss, rc_ppl, kl_loss = self.elbo_recog.item(),\
+            elbo_loss, bow_loss, rc_loss, rc_ppl, kl_loss, rc_ppl_proir = self.elbo_recog.item(),\
                                                             self.avg_bow_loss.item(),\
                                                             self.avg_rc_loss_recog.item(),\
                                                             self.rc_ppl_recog.item(),\
-                                                            self.avg_kld_recog.item()
+                                                            self.avg_kld_recog.item(),\
+                                                            self.rc_ppl.item()
             elbo_losses.append(elbo_loss)
             rc_losses.append(rc_loss)
             rc_ppls.append(rc_ppl)
             bow_losses.append(bow_loss)
             kl_losses.append(kl_loss)
+            rc_ppls_prior.append(rc_ppl_proir)
 
-        avg_losses = self.print_loss(name, ["elbo_loss", "bow_loss", "rc_loss", "rc_peplexity", "kl_loss"],
-                                     [elbo_losses, bow_losses, rc_losses, rc_ppls, kl_losses], "")
+        avg_losses = self.print_loss(name, ["rc_loss", "bow_loss", "elbo_loss", "rc_peplexity", "kl_loss", 'rc_peplexity_prior'],
+                                    [rc_losses, bow_losses, elbo_losses, rc_ppls, kl_losses, rc_ppls_prior], "")
         return avg_losses[0]
-
+        
     def test_model(self, test_feed, num_batch=None, repeat=5, dest=sys.stdout):
         local_t = 0
         recall_bleus = []
