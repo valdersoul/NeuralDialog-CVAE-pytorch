@@ -54,7 +54,7 @@ class ProfileBaselineConfig(object):
     description= None
     use_hcf = False  # use dialog act in training (if turn off kgCVAE -> CVAE)
     use_profile = False
-    update_limit = 3000  # the number of mini-batch before evaluating the model
+    update_limit = 3  # the number of mini-batch before evaluating the model
     num_topic = 200
     # how to encode utterance.
     # bow: add word embedding together
