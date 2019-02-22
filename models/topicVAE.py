@@ -419,9 +419,9 @@ class TopicVAE(BaseTFModel):
                     tb.summary.scalar("model/loss/kld", self.avg_kld.item()),
                     tb.summary.scalar("model/loss/bow_loss", self.avg_bow_loss.item())]
 
-                self.log_p_z = norm_log_liklihood(latent_sample, prior_mu, prior_logvar)
-                self.log_q_z_xy = norm_log_liklihood(latent_sample, recog_mu, recog_logvar)
-                self.est_marginal = torch.mean(rc_loss + bow_loss - self.log_p_z + self.log_q_z_xy)
+                # self.log_p_z = norm_log_liklihood(latent_sample, prior_mu, prior_logvar)
+                # self.log_q_z_xy = norm_log_liklihood(latent_sample, recog_mu, recog_logvar)
+                # self.est_marginal = torch.mean(rc_loss + bow_loss - self.log_p_z + self.log_q_z_xy)
 
     def batch_2_feed(self, batch, global_t, use_prior, repeat=1):
         context, context_lens, floors, topics, my_profiles, ot_profiles, outputs, output_lens, output_das = batch
