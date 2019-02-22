@@ -390,7 +390,7 @@ class TopicVAE(BaseTFModel):
                 self.avg_kld_recog = self.kld(prior_mean_dir, prior_logvar_dir, recog_mu, recog_logvar)
                 self.avg_kld = self.kld(prior_mu, prior_logvar, recog_mu, recog_logvar)
                 if mode == 'train':
-                    kl_weights = min(self.global_t / self.full_kl_step, 1.0)
+                    kl_weights = 1.0
                 else:
                     kl_weights = 1.0
 
