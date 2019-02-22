@@ -269,14 +269,16 @@ class TopicVAE(BaseTFModel):
             # use sampled Z or posterior Z
             if self.use_prior:
                 latent_sample = sample_gaussian(prior_mu, prior_logvar)
+                p = F.softmax(latent_sample, -1)
             else:
                 latent_sample = sample_gaussian(recog_mu, recog_logvar)
+                p = F.softmax(latent_sample, -1)
 
         with variable_scope.variable_scope("generationNetwork"):
             gen_inputs = torch.cat([cond_embedding, latent_sample], 1)
 
             # BOW loss
-            self.bow_logits = self.bow_project(latent_sample)
+            self.bow_logits = self.bow_project(p)
 
             # Y loss
             if self.use_hcf:
