@@ -45,6 +45,15 @@ class TopicVAE(BaseTFModel):
         self.sent_cell_size = config.sent_cell_size
         self.dec_cell_size = config.dec_cell_size
         self.h_dim = config.latent_size
+        self.a = 1.*np.ones((1 , self.h_dim)).astype(np.float32)
+        prior_mean = torch.from_numpy((np.log(self.a).T - np.mean(np.log(self.a), 1)).T)
+        prior_var = torch.from_numpy((((1.0 / self.a) * (1 - (2.0 / self.h_dim))).T +
+                                 (1.0 / (self.h_dim * self.h_dim)) * np.sum(1.0 / self.a, 1)).T)
+        prior_logvar = prior_var.log()
+
+        self.register_buffer('prior_mean_dir',    prior_mean)
+        self.register_buffer('prior_var_dir',     prior_var)
+        self.register_buffer('prior_logvar_dir',  prior_logvar)
 
         self.use_hcf = config.use_hcf
         self.embed_size = config.embed_size
@@ -374,14 +383,19 @@ class TopicVAE(BaseTFModel):
 
                 # print(recog_mu.sum(), recog_logvar.sum(), prior_mu.sum(), prior_logvar.sum())
                 #kld = gaussian_kld(recog_mu, recog_logvar, prior_mu, prior_logvar)
-                self.avg_kld = self.kld(recog_mu, recog_logvar, prior_mu, prior_logvar)
+                prior_mean_dir   = self.prior_mean_dir.expand_as(prior_mu)
+                prior_var_dir    = self.prior_var_dir.expand_as(prior_mu)
+                prior_logvar_dir = self.prior_logvar_dir.expand_as(prior_mu)
+
+                self.avg_kld_recog = self.kld(prior_mean_dir, prior_logvar_dir, recog_mu, recog_logvar)
+                self.avg_kld = self.kld(prior_mu, prior_logvar, recog_mu, recog_logvar)
                 if mode == 'train':
                     kl_weights = min(self.global_t / self.full_kl_step, 1.0)
                 else:
                     kl_weights = 1.0
 
                 self.kl_w = kl_weights
-                self.elbo = self.avg_rc_loss + kl_weights * self.avg_kld
+                self.elbo = self.avg_rc_loss + kl_weights * (self.avg_kld + self.avg_kld_recog)
                 self.aug_elbo = self.avg_bow_loss + self.avg_da_loss + self.elbo
 
                 self.summary_op = [\
