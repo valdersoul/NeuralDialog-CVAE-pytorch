@@ -10,6 +10,7 @@ from beeprint import pp
 from config_utils import ProfileBaselineConfig as Config
 from data_apis.corpus import SWDADialogCorpus, PERSONADialogCorpus
 from data_apis.data_utils import PERSONAataLoader
+from data_apis.data_utils import SWDADataLoader
 from models.cvae import KgRnnCVAE, S2S
 from models.baseline import S2Smemory
 from models.DirVAE import DirVAE
