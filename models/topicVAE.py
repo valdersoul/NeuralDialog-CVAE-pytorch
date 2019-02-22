@@ -26,10 +26,10 @@ import tensorboardX.writer
 from .cvae import BaseTFModel
 
 
-class KgRnnCVAE(BaseTFModel):
+class TopicVAE(BaseTFModel):
 
     def __init__(self, config, api, log_dir, scope=None):
-        super(KgRnnCVAE, self).__init__()
+        super(TopicVAE, self).__init__()
         self.vocab = api.vocab
         self.rev_vocab = api.rev_vocab
         self.vocab_size = len(self.vocab)
