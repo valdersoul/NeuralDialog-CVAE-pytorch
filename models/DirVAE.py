@@ -384,21 +384,48 @@ class DirVAE(BaseTFModel):
                     tb.summary.scalar("model/loss/kld", self.avg_kld.item()),
                     tb.summary.scalar("model/loss/bow_loss", self.avg_bow_loss.item())]
          
+    # def batch_2_feed(self, batch, global_t, use_prior, repeat=1):
+    #     context, context_lens, floors, topics, my_profiles, ot_profiles, outputs, output_lens, output_das, p_context, p_lens = batch
+    #     feed_dict = {"input_contexts": context, "context_lens":context_lens,
+    #                  "floors": floors, "topics":topics, "my_profile": my_profiles,
+    #                  "ot_profile": ot_profiles, "output_tokens": outputs,
+    #                  "output_das": output_das, "output_lens": output_lens,
+    #                  "use_prior": use_prior, "profile_contexts": p_context, "profile_lens":p_lens}
+    #     if repeat > 1:
+    #         tiled_feed_dict = {}
+    #         for key, val in feed_dict.items():
+    #             if key == "use_prior":
+    #                 tiled_feed_dict[key] = val
+    #                 continue
+    #             if val is None:
+    #                 tiled_feed_dict[key] = None
+    #                 continue
+    #             multipliers = [1]*len(val.shape)
+    #             multipliers[0] = repeat
+    #             tiled_feed_dict[key] = np.tile(val, multipliers)
+    #         feed_dict = tiled_feed_dict
+
+    #     if global_t is not None:
+    #         feed_dict["global_t"] = global_t
+
+    #     if torch.cuda.is_available():
+    #         feed_dict = {k: torch.from_numpy(v).cuda() if isinstance(v, np.ndarray) else v for k, v in feed_dict.items()}
+    #     else:
+    #         feed_dict = {k: torch.from_numpy(v) if isinstance(v, np.ndarray) else v for k, v in feed_dict.items()}
+
+    #     return feed_dict
     def batch_2_feed(self, batch, global_t, use_prior, repeat=1):
-        context, context_lens, floors, topics, my_profiles, ot_profiles, outputs, output_lens, output_das, p_context, p_lens = batch
+        context, context_lens, floors, topics, my_profiles, ot_profiles, outputs, output_lens, output_das = batch
         feed_dict = {"input_contexts": context, "context_lens":context_lens,
                      "floors": floors, "topics":topics, "my_profile": my_profiles,
                      "ot_profile": ot_profiles, "output_tokens": outputs,
                      "output_das": output_das, "output_lens": output_lens,
-                     "use_prior": use_prior, "profile_contexts": p_context, "profile_lens":p_lens}
+                     "use_prior": use_prior}
         if repeat > 1:
             tiled_feed_dict = {}
             for key, val in feed_dict.items():
                 if key == "use_prior":
                     tiled_feed_dict[key] = val
-                    continue
-                if val is None:
-                    tiled_feed_dict[key] = None
                     continue
                 multipliers = [1]*len(val.shape)
                 multipliers[0] = repeat
@@ -408,10 +435,7 @@ class DirVAE(BaseTFModel):
         if global_t is not None:
             feed_dict["global_t"] = global_t
 
-        if torch.cuda.is_available():
-            feed_dict = {k: torch.from_numpy(v).cuda() if isinstance(v, np.ndarray) else v for k, v in feed_dict.items()}
-        else:
-            feed_dict = {k: torch.from_numpy(v) if isinstance(v, np.ndarray) else v for k, v in feed_dict.items()}
+        feed_dict = {k: torch.from_numpy(v).cuda() if isinstance(v, np.ndarray) else v for k, v in feed_dict.items()}
 
         return feed_dict
 
