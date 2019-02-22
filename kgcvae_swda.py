@@ -59,23 +59,35 @@ def main():
     train_persona = None
     valid_persona = None
 
-    pp(config)
-    data_path = "data/convai2/train_" + FLAGS.data + "_original_no_cands.txt"
-    # get data set
-    #api = SWDADialogCorpus(FLAGS.data_dir, word2vec=FLAGS.word2vec_path, word2vec_dim=config.embed_size)
-    api = PERSONADialogCorpus(data_path, FLAGS.data, word2vec=FLAGS.word2vec_path, word2vec_dim=config.embed_size)
-    print("dataset loaded")
+    # pp(config)
+    # data_path = "data/convai2/train_" + FLAGS.data + "_original_no_cands.txt"
+    # # get data set
+    # #api = SWDADialogCorpus(FLAGS.data_dir, word2vec=FLAGS.word2vec_path, word2vec_dim=config.embed_size)
+    # api = PERSONADialogCorpus(data_path, FLAGS.data, word2vec=FLAGS.word2vec_path, word2vec_dim=config.embed_size)
+    # print("dataset loaded")
 
+    # dial_corpus = api.get_dialog_corpus()
+    # train_dial, valid_dial = dial_corpus.get("train"), dial_corpus.get("valid")
+    # if config.use_profile:
+    #     persona_corpus = api.get_persona_corpus()
+    #     train_persona, valid_persona = persona_corpus.get("train"), persona_corpus.get("valid")
+
+    # # convert to numeric input outputs that fits into TF models
+    # train_feed = PERSONAataLoader("Train", train_dial, train_persona, config)
+    # valid_feed = PERSONAataLoader("Valid", valid_dial, valid_persona, config)
+    # #test_feed = SWDADataLoader("Test", test_dial, test_meta, config)
+    # get data set
+    api = SWDADialogCorpus(FLAGS.data_dir, word2vec=FLAGS.word2vec_path, word2vec_dim=config.embed_size)
     dial_corpus = api.get_dialog_corpus()
-    train_dial, valid_dial = dial_corpus.get("train"), dial_corpus.get("valid")
-    if config.use_profile:
-        persona_corpus = api.get_persona_corpus()
-        train_persona, valid_persona = persona_corpus.get("train"), persona_corpus.get("valid")
+    meta_corpus = api.get_meta_corpus()
+
+    train_meta, valid_meta, test_meta = meta_corpus.get("train"), meta_corpus.get("valid"), meta_corpus.get("test")
+    train_dial, valid_dial, test_dial = dial_corpus.get("train"), dial_corpus.get("valid"), dial_corpus.get("test")
 
     # convert to numeric input outputs that fits into TF models
-    train_feed = PERSONAataLoader("Train", train_dial, train_persona, config)
-    valid_feed = PERSONAataLoader("Valid", valid_dial, valid_persona, config)
-    #test_feed = SWDADataLoader("Test", test_dial, test_meta, config)
+    train_feed = SWDADataLoader("Train", train_dial, train_meta, config)
+    valid_feed = SWDADataLoader("Valid", valid_dial, valid_meta, config)
+    test_feed = SWDADataLoader("Test", test_dial, test_meta, config)
 
     if FLAGS.forward_only or FLAGS.resume:
         log_dir = os.path.join(FLAGS.work_dir, FLAGS.test_path)
@@ -145,7 +157,7 @@ def main():
                 valid_feed.epoch_init(valid_config.batch_size, valid_config.backward_size,
                                       valid_config.step_size, shuffle=False, intra_shuffle=False)
                 model.eval()
-                model.test_model(valid_feed, num_batch=50)
+                model.test_model(valid_feed, num_batch=50, repeat=1)
 
                 # test_feed.epoch_init(test_config.batch_size, test_config.backward_size,
                 #                      test_config.step_size, shuffle=True, intra_shuffle=False)
