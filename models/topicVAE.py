@@ -294,7 +294,7 @@ class TopicVAE(BaseTFModel):
 
             # Y loss
             if self.use_hcf:
-                self.da_logits = self.da_project(gen_inputs)
+                self.da_logits = self.da_project(z)
                 da_prob = F.softmax(self.da_logits, dim=1)
                 pred_attribute_embedding = torch.matmul(da_prob, self.d_embedding.weight)
                 if mode == 'test':
