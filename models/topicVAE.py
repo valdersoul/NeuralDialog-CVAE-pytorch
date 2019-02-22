@@ -450,16 +450,16 @@ class TopicVAE(BaseTFModel):
 
     def train_model(self, global_t, train_feed, update_limit=5000):
         elbo_losses = []
-            rc_losses = []
-            rc_recog_losses = []
-            rc_ppls = []
-            rc_recog_ppls = []
-            kl_recog_losses = []
-            kl_losses = []
-            bow_losses = []
-            local_t = 0
-            start_time = time.time()
-            loss_names =  ["elbo_loss", "bow_loss", "rc_loss", "rc_peplexity", "kl_loss", "rc_recog_loss", "rc_recog_perplexity", "kl_recog_loss"]
+        rc_losses = []
+        rc_recog_losses = []
+        rc_ppls = []
+        rc_recog_ppls = []
+        kl_recog_losses = []
+        kl_losses = []
+        bow_losses = []
+        local_t = 0
+        start_time = time.time()
+        loss_names =  ["elbo_loss", "bow_loss", "rc_loss", "rc_peplexity", "kl_loss", "rc_recog_loss", "rc_recog_perplexity", "kl_recog_loss"]
         while True:
             batch = train_feed.next_batch()
             if batch is None:
@@ -482,13 +482,13 @@ class TopicVAE(BaseTFModel):
             for summary in self.summary_op:
                 self.train_summary_writer.add_summary(summary, global_t)
             elbo_losses.append(elbo_loss)
-                bow_losses.append(bow_loss)
-                rc_ppls.append(rc_ppl)
-                rc_recog_ppls.append(rc_recog_ppl)
-                rc_losses.append(rc_loss)
-                rc_recog_losses.append(rc_recog_loss)
-                kl_losses.append(kl_loss)
-                kl_recog_losses.append(kl_recog_loss)
+            bow_losses.append(bow_loss)
+            rc_ppls.append(rc_ppl)
+            rc_recog_ppls.append(rc_recog_ppl)
+            rc_losses.append(rc_loss)
+            rc_recog_losses.append(rc_recog_loss)
+            kl_losses.append(kl_loss)
+            kl_recog_losses.append(kl_recog_loss)
 
             global_t += 1
             local_t += 1
