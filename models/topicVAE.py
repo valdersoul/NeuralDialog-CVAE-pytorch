@@ -371,8 +371,8 @@ class KgRnnCVAE(BaseTFModel):
                     self.avg_da_loss = self.avg_bow_loss.new_tensor(0)
 
                 # print(recog_mu.sum(), recog_logvar.sum(), prior_mu.sum(), prior_logvar.sum())
-                kld = gaussian_kld(recog_mu, recog_logvar, prior_mu, prior_logvar)
-                self.avg_kld = torch.mean(kld)
+                #kld = gaussian_kld(recog_mu, recog_logvar, prior_mu, prior_logvar)
+                self.avg_kld = self.kld(recog_mu, recog_logvar, prior_mu, prior_logvar)
                 if mode == 'train':
                     kl_weights = min(self.global_t / self.full_kl_step, 1.0)
                 else:
@@ -560,3 +560,14 @@ class KgRnnCVAE(BaseTFModel):
         print(report)
         dest.write(report + "\n")
         print("Done testing")
+
+    def kld(self, prior_mean, prior_logvar, posterior_mean, posterior_logvar):
+        prior_var = prior_logvar.exp()
+        posterior_var = posterior_logvar.exp()
+        var_division    = posterior_var  / prior_var
+        diff            = posterior_mean - prior_mean
+        diff_term       = diff * diff / prior_var
+        logvar_division = prior_logvar - posterior_logvar
+        # put KLD together
+        KLD = 0.5 * ( (var_division + diff_term + logvar_division).sum(1) - self.h_dim )
+        return torch.mean(KLD)
