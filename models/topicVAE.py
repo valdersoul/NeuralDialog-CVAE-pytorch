@@ -84,9 +84,9 @@ class TopicVAE(BaseTFModel):
         cond_embedding_size = config.topic_embed_size + 4 + 4 + self.context_cell_size
 
         # # recognitionNetwork
-        # recog_input_size = cond_embedding_size + output_embedding_size
-        # if self.use_hcf:
-        #     recog_input_size += 30
+        recog_input_size = cond_embedding_size + output_embedding_size
+        if self.use_hcf:
+            recog_input_size += 30
         
         # self.recogNet_mulogvar = nn.Linear(recog_input_size, config.latent_size * 2)
 
