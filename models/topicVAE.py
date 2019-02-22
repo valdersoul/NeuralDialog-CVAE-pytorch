@@ -92,39 +92,31 @@ class TopicVAE(BaseTFModel):
 
         cond_embedding_size = config.topic_embed_size + 4 + 4 + self.context_cell_size
 
-        # # recognitionNetwork
-        recog_input_size = cond_embedding_size + output_embedding_size
-        if self.use_hcf:
-            recog_input_size += 30
-        
-        # self.recogNet_mulogvar = nn.Linear(recog_input_size, config.latent_size * 2)
-
-        # # priorNetwork
-        # # P(XYZ)=P(Z|X)P(X)P(Y|X,Z)
-        # self.priorNet_mulogvar = nn.Sequential(
-        #     nn.Linear(cond_embedding_size, np.maximum(config.latent_size * 2, 100)),
-        #     nn.Tanh(),
-        #     nn.Linear(np.maximum(config.latent_size * 2, 100), config.latent_size * 2))
-         # ReconNetwork from condition, with prior
-        self.recog_logvar_fc = nn.Linear(recog_input_size, config.latent_size)
-        self.recog_mean_fc = nn.Linear(recog_input_size, config.latent_size)
-        self.recog_logvar_bn = nn.BatchNorm1d(config.latent_size)
-        self.recog_mean_bn = nn.BatchNorm1d(config.latent_size)
-
-        self.recog_logvar_bn.weight.requires_grad = False
-        self.recog_mean_bn.weight.requires_grad = False
-        self.recog_logvar_bn.weight.fill_(1)
-        self.recog_mean_bn.weight.fill_(1)
-        
-        #PriorNetwork Prior
-        self.logvar_fc = nn.Linear(cond_embedding_size, config.latent_size)
-        self.mean_fc = nn.Linear(cond_embedding_size, config.latent_size)
-        self.mean_bn    = nn.BatchNorm1d(config.latent_size)                   # bn for mean
-        self.logvar_bn  = nn.BatchNorm1d(config.latent_size)               # bn for logvar
+        # PriorNetwork for response, with approximated Dirchlet function
+        prior_input_size = output_embedding_size #if not self.use_hcf else output_embedding_size + 30
+        self.logvar_fc = nn.Linear(prior_input_size, self.h_dim)
+        self.mean_fc = nn.Linear(prior_input_size, self.h_dim)
+        self.mean_bn    = nn.BatchNorm1d(self.h_dim)                   # bn for mean
+        self.logvar_bn  = nn.BatchNorm1d(self.h_dim)               # bn for logvar
+        self.decoder_bn = nn.BatchNorm1d(self.vocab_size)
         self.logvar_bn.weight.requires_grad = False
         self.mean_bn.weight.requires_grad = False
+
         self.logvar_bn.weight.fill_(1)
         self.mean_bn.weight.fill_(1)
+
+        # # recognitionNetwork
+        # ReconNetwork from condition, with prior
+        recog_input_size = cond_embedding_size if not self.use_hcf else cond_embedding_size + 30
+        self.recog_logvar_fc = nn.Linear(recog_input_size, self.h_dim)
+        self.recog_mean_fc = nn.Linear(recog_input_size, self.h_dim)
+        self.recog_logvar_bn = nn.BatchNorm1d(self.h_dim)
+        self.recog_mean_bn = nn.BatchNorm1d(self.h_dim)
+        self.recog_logvar_bn.weight.requires_grad = False
+        self.recog_mean_bn.weight.requires_grad = False
+
+        self.recog_logvar_bn.weight.fill_(1)
+        self.recog_mean_bn.weight.fill_(1)
 
 
         gen_inputs_size = cond_embedding_size + config.latent_size
@@ -140,26 +132,34 @@ class TopicVAE(BaseTFModel):
         # Y loss
         if self.use_hcf:
             self.da_project = nn.Sequential(
-                nn.Linear(gen_inputs_size, 400),
-                nn.Tanh(),
-                nn.Dropout(1 - config.keep_prob),
-                nn.Linear(400, self.da_vocab_size))
+                nn.Linear(self.h_dim, self.da_vocab_size))
             dec_inputs_size = gen_inputs_size + 30
         else:
             dec_inputs_size = gen_inputs_size
 
-        # Decoder
+        # Content based Decoder
         if config.num_layer > 1:
             self.dec_init_state_net = nn.ModuleList([nn.Linear(dec_inputs_size, self.dec_cell_size) for i in range(config.num_layer)])
         else:
             self.dec_init_state_net = nn.Linear(dec_inputs_size, self.dec_cell_size)
+        
+        # Response based Decoder
+        response_gen_input_size = self.h_dim
+        if config.num_layer > 1:
+            self.dec_init_state_net_res = nn.ModuleList([nn.Linear(response_gen_input_size, self.dec_cell_size) for i in range(config.num_layer)])
+        else:
+            self.dec_init_state_net_res = nn.Linear(response_gen_input_size, self.dec_cell_size)
 
-        # decoder
+        # Content based Decoder
         dec_input_embedding_size = self.embed_size
         if self.use_hcf:
             dec_input_embedding_size += 30
         self.dec_cell = self.get_rnncell(config.cell_type, dec_input_embedding_size, self.dec_cell_size, config.keep_prob, config.num_layer)
         self.dec_cell_proj = nn.Linear(self.dec_cell_size, self.vocab_size)
+
+        # Response based Decoder
+        self.dec_cell_res = self.get_rnncell(config.cell_type, self.embed_size, self.dec_cell_size, config.keep_prob, config.num_layer)
+        self.dec_cell_proj_res = nn.Linear(self.dec_cell_size, self.vocab_size)
 
         self.build_optimizer(config, log_dir)
 
@@ -262,9 +262,9 @@ class TopicVAE(BaseTFModel):
 
         with variable_scope.variable_scope("recognitionNetwork"):
             if self.use_hcf:
-                recog_input = torch.cat([cond_embedding, output_embedding, attribute_fc1], 1)
+                recog_input = torch.cat([cond_embedding, attribute_fc1], 1)
             else:
-                recog_input = torch.cat([cond_embedding, output_embedding], 1)
+                recog_input = cond_embedding
             #self.recog_mulogvar = recog_mulogvar = self.recogNet_mulogvar(recog_input)
             #recog_mu, recog_logvar = torch.chunk(recog_mulogvar, 2, 1)
             recog_mu = self.recog_mean_bn(self.recog_mean_fc(recog_input))
@@ -272,19 +272,22 @@ class TopicVAE(BaseTFModel):
 
         with variable_scope.variable_scope("priorNetwork"):
             # P(XYZ)=P(Z|X)P(X)P(Y|X,Z)
-            prior_mu = self.mean_bn(self.mean_fc(cond_embedding))
-            prior_logvar = self.logvar_bn(self.logvar_fc(cond_embedding))
+            prior_mu = self.mean_bn(self.mean_fc(output_embedding))
+            prior_logvar = self.logvar_bn(self.logvar_fc(output_embedding))
 
-            # use sampled Z or posterior Z
-            if self.use_prior:
-                latent_sample = sample_gaussian(prior_mu, prior_logvar)
-                p = F.softmax(latent_sample, -1)
-            else:
-                latent_sample = sample_gaussian(recog_mu, recog_logvar)
-                p = F.softmax(latent_sample, -1)
+            # # use sampled Z or posterior Z
+            # if self.use_prior:
+            #     latent_sample = sample_gaussian(prior_mu, prior_logvar)
+            #     p = F.softmax(latent_sample, -1)
+            # else:
+            #     latent_sample = sample_gaussian(recog_mu, recog_logvar)
+            #     p = F.softmax(latent_sample, -1)
+        recog_z = sample_gaussian(recog_mu, recog_logvar)
+        z = sample_gaussian(prior_mu, prior_logvar)
+        p = F.softmax(z, -1)
 
-        with variable_scope.variable_scope("generationNetwork"):
-            gen_inputs = torch.cat([cond_embedding, latent_sample], 1)
+        with variable_scope.variable_scope("RecgenerationNetwork"):
+            gen_inputs = torch.cat([cond_embedding, recog_z], 1)
 
             # BOW loss
             self.bow_logits = self.bow_project(p)
@@ -309,6 +312,10 @@ class TopicVAE(BaseTFModel):
                 dec_init_state = torch.stack(dec_init_state)
             else:
                 dec_init_state = self.dec_init_state_net(dec_inputs).unsqueeze(0)
+        
+        with variable_scope.variable_scope("PriorGenerationNetwork"):
+            prior_dec_init = self.dec_init_state_net_res(z)
+            prior_dec_init = prior_dec_init.unsqueeze(0)
 
         with variable_scope.variable_scope("decoder"):
             if mode == 'test':
@@ -344,16 +351,29 @@ class TopicVAE(BaseTFModel):
                 # Apply embedding dropout
                 dec_input_embedding = F.dropout(dec_input_embedding, 1 - self.keep_prob, self.training)
 
-                dec_outs, _, final_context_state =  decoder_fn_lib.train_loop(self.dec_cell, self.dec_cell_proj, dec_input_embedding, 
-                    init_state=dec_init_state, context_vector=selected_attribute_embedding, sequence_length=dec_seq_lens)
+                dec_outs_recog, _, final_context_state_recog =  decoder_fn_lib.train_loop(self.dec_cell, 
+                                                                              self.dec_cell_proj, 
+                                                                              dec_input_embedding, 
+                                                                              init_state=dec_init_state, 
+                                                                              context_vector=selected_attribute_embedding, 
+                                                                              sequence_length=dec_seq_lens)
+                
+                dec_outs, _, final_context_state =  decoder_fn_lib.train_loop(self.dec_cell_res, 
+                                                                              self.dec_cell_proj_res, 
+                                                                              dec_input_embedding, 
+                                                                              init_state=prior_dec_init, 
+                                                                              context_vector=None, 
+                                                                              sequence_length=dec_seq_lens)
 
             # dec_outs, _, final_context_state = dynamic_rnn_decoder(dec_cell, loop_func, inputs=dec_input_embedding, sequence_length=dec_seq_lens)
             if final_context_state is not None:
                 #final_context_state = final_context_state[:, 0:dec_outs.size(1)]
                 self.dec_out_words = final_context_state
+                self.dec_out_words_recog = final_context_state_recog
                 # mask = torch.sign(torch.max(dec_outs, 2)[0]).float()
                 # self.dec_out_words = final_context_state * mask # no need to reverse here unlike original code
             else:
+                self.dec_out_words_recog = torch.max(dec_outs_recog, 2)[1]
                 self.dec_out_words = torch.max(dec_outs, 2)[1]
 
         if not mode == 'test':
@@ -361,13 +381,8 @@ class TopicVAE(BaseTFModel):
                 labels = self.output_tokens[:, 1:]
                 label_mask = torch.sign(labels).detach().float()
 
-                # rc_loss = tf.nn.sparse_softmax_cross_entropy_with_logits(logits=dec_outs, labels=labels)
-                rc_loss = F.cross_entropy(dec_outs.view(-1, dec_outs.size(-1)), labels.reshape(-1), reduce=False).view(dec_outs.size()[:-1])
-                # print(rc_loss * label_mask)
-                rc_loss = torch.sum(rc_loss * label_mask, 1)
-                self.avg_rc_loss = rc_loss.mean()
-                # used only for perpliexty calculation. Not used for optimzation
-                self.rc_ppl = torch.exp(torch.sum(rc_loss) / torch.sum(label_mask))
+                self.avg_rc_loss, self.rc_ppl = self.rc_loss(dec_outs, labels, label_mask)
+                self.avg_rc_loss_recog, self.rc_ppl_recog = self.rc_loss(dec_outs_recog, labels, label_mask)
 
                 """ as n-trial multimodal distribution. """
                 # bow_loss = tf.nn.sparse_softmax_cross_entropy_with_logits(logits=tile_bow_logits, labels=labels) * label_mask
@@ -381,22 +396,21 @@ class TopicVAE(BaseTFModel):
                 else:
                     self.avg_da_loss = self.avg_bow_loss.new_tensor(0)
 
-                # print(recog_mu.sum(), recog_logvar.sum(), prior_mu.sum(), prior_logvar.sum())
-                #kld = gaussian_kld(recog_mu, recog_logvar, prior_mu, prior_logvar)
                 prior_mean_dir   = self.prior_mean_dir.expand_as(prior_mu)
                 prior_var_dir    = self.prior_var_dir.expand_as(prior_mu)
                 prior_logvar_dir = self.prior_logvar_dir.expand_as(prior_mu)
 
-                self.avg_kld_recog = self.kld(prior_mean_dir, prior_logvar_dir, recog_mu, recog_logvar)
-                self.avg_kld = self.kld(prior_mu, prior_logvar, recog_mu, recog_logvar)
+                self.avg_kld_recog = self.kld(prior_mu, prior_logvar, recog_mu, recog_logvar)
+                self.avg_kld = self.kld(prior_mean_dir, prior_logvar_dir, prior_mu, prior_logvar)
                 if mode == 'train':
-                    kl_weights = 1.0
+                    kl_weights = kl_weights = min(self.global_t / self.full_kl_step, 1.0)
                 else:
                     kl_weights = 1.0
 
                 self.kl_w = kl_weights
-                self.elbo = self.avg_rc_loss + kl_weights * (self.avg_kld + self.avg_kld_recog)
-                self.aug_elbo = self.avg_bow_loss + self.avg_da_loss + self.elbo
+                self.elbo = self.avg_rc_loss + kl_weights * (self.avg_kld)
+                self.elbo_recog = self.avg_rc_loss_recog + kl_weights * (avg_kld_recog)
+                self.aug_elbo = self.avg_bow_loss + self.avg_da_loss + self.elbo + self.elbo_recog
 
                 self.summary_op = [\
                     tb.summary.scalar("model/loss/da_loss", self.avg_da_loss.item()),
@@ -436,13 +450,16 @@ class TopicVAE(BaseTFModel):
 
     def train_model(self, global_t, train_feed, update_limit=5000):
         elbo_losses = []
-        rc_losses = []
-        rc_ppls = []
-        kl_losses = []
-        bow_losses = []
-        local_t = 0
-        start_time = time.time()
-        loss_names =  ["elbo_loss", "bow_loss", "rc_loss", "rc_peplexity", "kl_loss"]
+            rc_losses = []
+            rc_recog_losses = []
+            rc_ppls = []
+            rc_recog_ppls = []
+            kl_recog_losses = []
+            kl_losses = []
+            bow_losses = []
+            local_t = 0
+            start_time = time.time()
+            loss_names =  ["elbo_loss", "bow_loss", "rc_loss", "rc_peplexity", "kl_loss", "rc_recog_loss", "rc_recog_perplexity", "kl_recog_loss"]
         while True:
             batch = train_feed.next_batch()
             if batch is None:
@@ -451,34 +468,40 @@ class TopicVAE(BaseTFModel):
                 break
             feed_dict = self.batch_2_feed(batch, global_t, use_prior=False)
             self.forward(feed_dict, mode='train')
-            elbo_loss, bow_loss, rc_loss, rc_ppl, kl_loss = self.elbo.item(),\
-                                                            self.avg_bow_loss.item(),\
-                                                            self.avg_rc_loss.item(),\
-                                                            self.rc_ppl.item(),\
-                                                            self.avg_kld.item()
+            elbo_loss, bow_loss, rc_loss, rc_ppl, kl_loss, rc_recog_loss, rc_recog_ppl, kl_recog_loss = self.elbo.item(),\
+                                                                self.avg_bow_loss.item(),\
+                                                                self.avg_rc_loss.item(),\
+                                                                self.rc_ppl.item(),\
+                                                                self.avg_kld.item(),\
+                                                                self.avg_rc_loss_recog.item(),\
+                                                                self.rc_ppl_recog.item(),\
+                                                                self.avg_kld_recog.item(),\
 
             self.optimize(self.aug_elbo)
             # print(elbo_loss, bow_loss, rc_loss, rc_ppl, kl_loss)
             for summary in self.summary_op:
                 self.train_summary_writer.add_summary(summary, global_t)
             elbo_losses.append(elbo_loss)
-            bow_losses.append(bow_loss)
-            rc_ppls.append(rc_ppl)
-            rc_losses.append(rc_loss)
-            kl_losses.append(kl_loss)
+                bow_losses.append(bow_loss)
+                rc_ppls.append(rc_ppl)
+                rc_recog_ppls.append(rc_recog_ppl)
+                rc_losses.append(rc_loss)
+                rc_recog_losses.append(rc_recog_loss)
+                kl_losses.append(kl_loss)
+                kl_recog_losses.append(kl_recog_loss)
 
             global_t += 1
             local_t += 1
             if local_t % (train_feed.num_batch // 10) == 0:
                 kl_w = self.kl_w
                 self.print_loss("%.2f" % (train_feed.ptr / float(train_feed.num_batch)),
-                                loss_names, [elbo_losses, bow_losses, rc_losses, rc_ppls, kl_losses], "kl_w %f" % kl_w)
+                                    loss_names, [elbo_losses, bow_losses, rc_losses, rc_ppls, kl_losses, rc_recog_losses, rc_recog_ppls, kl_recog_losses], "kl_w %f" % kl_w)
 
         # finish epoch!
         torch.cuda.synchronize()
         epoch_time = time.time() - start_time
         avg_losses = self.print_loss("Epoch Done", loss_names,
-                                     [elbo_losses, bow_losses, rc_losses, rc_ppls, kl_losses],
+                                        [elbo_losses, bow_losses, rc_losses, rc_ppls, kl_losses, rc_recog_loss, rc_recog_ppl, kl_recog_loss],
                                      "step time %.4f" % (epoch_time / train_feed.num_batch))
 
         return global_t, avg_losses[0]
@@ -497,11 +520,11 @@ class TopicVAE(BaseTFModel):
             feed_dict = self.batch_2_feed(batch, None, use_prior=False, repeat=1)
             with torch.no_grad():
                 self.forward(feed_dict, mode='valid')
-            elbo_loss, bow_loss, rc_loss, rc_ppl, kl_loss = self.elbo.item(),\
+            elbo_loss, bow_loss, rc_loss, rc_ppl, kl_loss = self.elbo_recog.item(),\
                                                             self.avg_bow_loss.item(),\
-                                                            self.avg_rc_loss.item(),\
-                                                            self.rc_ppl.item(),\
-                                                            self.avg_kld.item()
+                                                            self.avg_rc_loss_recog.item(),\
+                                                            self.rc_ppl_recog.item(),\
+                                                            self.avg_kld_recog.item()
             elbo_losses.append(elbo_loss)
             rc_losses.append(rc_loss)
             rc_ppls.append(rc_ppl)
@@ -587,3 +610,13 @@ class TopicVAE(BaseTFModel):
         # put KLD together
         KLD = 0.5 * ( (var_division + diff_term + logvar_division).sum(1) - self.h_dim )
         return torch.mean(KLD)
+    
+    def rc_loss(self, dec_outs, labels, label_mask):
+        # rc_loss = tf.nn.sparse_softmax_cross_entropy_with_logits(logits=dec_outs, labels=labels)
+        rc_loss = F.cross_entropy(dec_outs.view(-1, dec_outs.size(-1)), labels.reshape(-1), reduce=False).view(dec_outs.size()[:-1])
+        # print(rc_loss * label_mask)
+        rc_loss = torch.sum(rc_loss * label_mask, 1)
+        avg_rc_loss = rc_loss.mean()
+        # used only for perpliexty calculation. Not used for optimzation
+        rc_ppl = torch.exp(torch.sum(rc_loss) / torch.sum(label_mask))
+        return avg_rc_loss, rc_ppl
