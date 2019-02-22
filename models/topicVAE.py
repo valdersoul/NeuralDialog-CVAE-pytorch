@@ -44,6 +44,7 @@ class TopicVAE(BaseTFModel):
         self.context_cell_size = config.cxt_cell_size
         self.sent_cell_size = config.sent_cell_size
         self.dec_cell_size = config.dec_cell_size
+
         self.h_dim = config.latent_size
         self.a = 1.*np.ones((1 , self.h_dim)).astype(np.float32)
         prior_mean = torch.from_numpy((np.log(self.a).T - np.mean(np.log(self.a), 1)).T)
@@ -93,7 +94,7 @@ class TopicVAE(BaseTFModel):
         cond_embedding_size = config.topic_embed_size + 4 + 4 + self.context_cell_size
 
         # PriorNetwork for response, with approximated Dirchlet function
-        prior_input_size = output_embedding_size #if not self.use_hcf else output_embedding_size + 30
+        prior_input_size = output_embedding_size + cond_embedding_size#if not self.use_hcf else output_embedding_size + 30
         self.logvar_fc = nn.Linear(prior_input_size, self.h_dim)
         self.mean_fc = nn.Linear(prior_input_size, self.h_dim)
         self.mean_bn    = nn.BatchNorm1d(self.h_dim)                   # bn for mean
@@ -265,23 +266,14 @@ class TopicVAE(BaseTFModel):
                 recog_input = torch.cat([cond_embedding, attribute_fc1], 1)
             else:
                 recog_input = cond_embedding
-            #self.recog_mulogvar = recog_mulogvar = self.recogNet_mulogvar(recog_input)
-            #recog_mu, recog_logvar = torch.chunk(recog_mulogvar, 2, 1)
             recog_mu = self.recog_mean_bn(self.recog_mean_fc(recog_input))
             recog_logvar = self.recog_logvar_bn(self.recog_logvar_fc(recog_input))
 
         with variable_scope.variable_scope("priorNetwork"):
-            # P(XYZ)=P(Z|X)P(X)P(Y|X,Z)
-            prior_mu = self.mean_bn(self.mean_fc(output_embedding))
-            prior_logvar = self.logvar_bn(self.logvar_fc(output_embedding))
+            prior_input = torch.cat([cond_embedding, output_embedding], -1)
+            prior_mu = self.mean_bn(self.mean_fc(prior_input))
+            prior_logvar = self.logvar_bn(self.logvar_fc(prior_input))
 
-            # # use sampled Z or posterior Z
-            # if self.use_prior:
-            #     latent_sample = sample_gaussian(prior_mu, prior_logvar)
-            #     p = F.softmax(latent_sample, -1)
-            # else:
-            #     latent_sample = sample_gaussian(recog_mu, recog_logvar)
-            #     p = F.softmax(latent_sample, -1)
         recog_z = sample_gaussian(recog_mu, recog_logvar)
         z = sample_gaussian(prior_mu, prior_logvar)
         p = F.softmax(z, -1)
