@@ -406,8 +406,8 @@ class TopicVAE(BaseTFModel):
                     kl_weights = 1.0
 
                 self.kl_w = kl_weights
-                self.elbo = self.avg_rc_loss + kl_weights * (self.avg_kld + self.avg_kld_recog)
-                self.elbo_recog = self.avg_rc_loss_recog #+ kl_weights * (self.avg_kld_recog)
+                self.elbo = self.avg_rc_loss + kl_weights * (self.avg_kld)
+                self.elbo_recog = self.avg_rc_loss_recog + kl_weights * (self.avg_kld_recog)
                 if self.global_t < self.prior_step:
                     self.aug_elbo= self.self.avg_bow_los + self.avg_da_loss + self.avg_kld + self.avg_rc_loss
                 else:
