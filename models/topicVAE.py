@@ -95,7 +95,7 @@ class TopicVAE(BaseTFModel):
 
         # PriorNetwork for response, with approximated Dirchlet function
         prior_input_size = output_embedding_size if not self.use_hcf else output_embedding_size + 30
-        self.logvar_fc = nn.(prior_input_size, self.h_dim)
+        self.logvar_fc = nn.Linear(prior_input_size, self.h_dim)
         self.mean_fc = nn.Linear(prior_input_size, self.h_dim)
         self.mean_bn    = nn.BatchNorm1d(self.h_dim)                   # bn for mean
         self.logvar_bn  = nn.BatchNorm1d(self.h_dim)               # bn for logvar
@@ -270,7 +270,7 @@ class TopicVAE(BaseTFModel):
             recog_logvar = self.recog_logvar_bn(self.recog_logvar_fc(recog_input))
 
         with variable_scope.variable_scope("priorNetwork"):
-            prior_input = torch.cat([cond_embedding, output_embedding], -1)
+            prior_input = torch.cat([output_embedding], -1)
             prior_mu = self.mean_bn(self.mean_fc(prior_input))
             prior_logvar = self.logvar_bn(self.logvar_fc(prior_input))
 
@@ -404,9 +404,9 @@ class TopicVAE(BaseTFModel):
                     kl_weights = 1.0
 
                 self.kl_w = kl_weights
-                self.elbo = self.avg_rc_loss + #kl_weights * (self.avg_kld + self.avg_kld_recog)
-                self.elbo_recog = self.avg_rc_loss_recog + kl_weights * (self.avg_kld_recog)
-                self.aug_elbo = self.avg_bow_loss + self.avg_da_loss + self.elbo# + self.elbo_recog
+                self.elbo = self.avg_rc_loss + kl_weights * (self.avg_kld + self.avg_kld_recog)
+                self.elbo_recog = self.avg_rc_loss_recog #+ kl_weights * (self.avg_kld_recog)
+                self.aug_elbo = self.avg_bow_loss + self.avg_da_loss + self.elbo + self.elbo_recog
 
                 self.summary_op = [\
                     tb.summary.scalar("model/loss/da_loss", self.avg_da_loss.item()),
