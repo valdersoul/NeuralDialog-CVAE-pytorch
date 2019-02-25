@@ -319,14 +319,16 @@ class TopicVAE(BaseTFModel):
                 #                                                         context_vector=selected_attribute_embedding)
                 # dec_input_embedding = None
                 # dec_seq_lens = None
-                dec_outs, _, final_context_state = decoder_fn_lib.inference_loop(self.dec_cell, self.dec_cell_proj, self.embedding,
+                dec_outs, _, final_context_state = decoder_fn_lib.inference_loop(self.dec_cell, 
+                                                                    self.dec_cell_proj, self.embedding,
                                                                     encoder_state = dec_init_state,
                                                                     start_of_sequence_id=self.go_id,
                                                                     end_of_sequence_id=self.eos_id,
                                                                     maximum_length=self.max_utt_len,
                                                                     num_decoder_symbols=self.vocab_size,
-                                                                    context_vector=selected_attribute_embedding,
+                                                                    context_vector=selected_attribute_embedding if self.use_hcf else None,
                                                                     decode_type='greedy')
+                
                 # print(final_context_state)
             else:
                 # loop_func = decoder_fn_lib.context_decoder_fn_train(dec_init_state, selected_attribute_embedding)
@@ -361,11 +363,13 @@ class TopicVAE(BaseTFModel):
             if final_context_state is not None:
                 #final_context_state = final_context_state[:, 0:dec_outs.size(1)]
                 self.dec_out_words = final_context_state
-                self.dec_out_words_recog = final_context_state_recog
+                if not mode == 'test':
+                    self.dec_out_words_recog = final_context_state_recog
                 # mask = torch.sign(torch.max(dec_outs, 2)[0]).float()
                 # self.dec_out_words = final_context_state * mask # no need to reverse here unlike original code
             else:
-                self.dec_out_words_recog = torch.max(dec_outs_recog, 2)[1]
+                if not mode == 'test':
+                    self.dec_out_words_recog = torch.max(dec_outs_recog, 2)[1]
                 self.dec_out_words = torch.max(dec_outs, 2)[1]
 
         if not mode == 'test':
