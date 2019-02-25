@@ -412,6 +412,8 @@ class TopicVAE(BaseTFModel):
                     self.aug_elbo= self.avg_bow_loss + self.avg_da_loss + self.avg_kld + self.avg_rc_loss
                 else:
                     self.aug_elbo = self.avg_rc_loss_recog + self.avg_kld_recog
+                    prior_mu.detach()
+                    prior_logvar.detach()
                 #self.aug_elbo = self.avg_bow_loss + self.avg_da_loss + self.elbo + self.elbo_recog
 
                 self.summary_op = [\
