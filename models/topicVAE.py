@@ -66,6 +66,8 @@ class TopicVAE(BaseTFModel):
         self.grad_clip = config.grad_clip
         self.grad_noise = config.grad_noise
 
+        self.prior_step = 10000
+
         # topicEmbedding
         self.t_embedding = nn.Embedding(self.topic_vocab_size, config.topic_embed_size)
         if self.use_hcf:
@@ -406,7 +408,11 @@ class TopicVAE(BaseTFModel):
                 self.kl_w = kl_weights
                 self.elbo = self.avg_rc_loss + kl_weights * (self.avg_kld + self.avg_kld_recog)
                 self.elbo_recog = self.avg_rc_loss_recog #+ kl_weights * (self.avg_kld_recog)
-                self.aug_elbo = self.avg_bow_loss + self.avg_da_loss + self.elbo + self.elbo_recog
+                if self.global_t < self.prior_step:
+                    self.aug_elbo= self.self.avg_bow_los + self.avg_da_loss + self.avg_kld
+                else:
+                    self.aug_elbo = self.avg_rc_loss_recog + self.avg_kld_recog
+                #self.aug_elbo = self.avg_bow_loss + self.avg_da_loss + self.elbo + self.elbo_recog
 
                 self.summary_op = [\
                     tb.summary.scalar("model/loss/da_loss", self.avg_da_loss.item()),
