@@ -412,10 +412,15 @@ class TopicVAE(BaseTFModel):
                     self.aug_elbo= self.avg_bow_loss + self.avg_da_loss + self.avg_kld + self.avg_rc_loss
                 else:
                     self.aug_elbo = self.avg_rc_loss_recog + self.avg_kld_recog
-                    prior_mu.detach()
-                    prior_logvar.detach()
-                    input_embedding.detach()
-                    output_embedding.detach()
+                    for param in self.embedding.parameters():
+                        param.requires_grad = False
+                    for param in self.sent_cell.parameters():
+                        param.requires_grad = False
+                    for param in self.mean_fc.parameters():
+                        param.requires_grad = False
+                    for param in self.logvar_fc.parameters():
+                        param.requires_grad = False
+
                 #self.aug_elbo = self.avg_bow_loss + self.avg_da_loss + self.elbo + self.elbo_recog
 
                 self.summary_op = [\
