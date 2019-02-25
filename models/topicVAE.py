@@ -400,7 +400,8 @@ class TopicVAE(BaseTFModel):
                 prior_var_dir    = self.prior_var_dir.expand_as(prior_mu)
                 prior_logvar_dir = self.prior_logvar_dir.expand_as(prior_mu)
 
-                self.avg_kld_recog = self.kld(prior_mu, prior_logvar, recog_mu, recog_logvar)
+                #self.avg_kld_recog = self.kld(prior_mu, prior_logvar, recog_mu, recog_logvar)
+                self.avg_kld_recog = self.compute_mmd(z, recog_z)
                 self.avg_kld = self.kld(prior_mean_dir, prior_logvar_dir, prior_mu, prior_logvar)
                 if mode == 'train':
                     kl_weights = kl_weights = min(self.global_t / self.full_kl_step, 1.0)
@@ -649,3 +650,21 @@ class TopicVAE(BaseTFModel):
         # used only for perpliexty calculation. Not used for optimzation
         rc_ppl = torch.exp(torch.sum(rc_loss) / torch.sum(label_mask))
         return avg_rc_loss, rc_ppl
+
+    def compute_kernel(self, x, y):
+        x_size = x.size(0)
+        y_size = y.size(0)
+        dim = x.size(1)
+        x = x.unsqueeze(1) # (x_size, 1, dim)
+        y = y.unsqueeze(0) # (1, y_size, dim)
+        tiled_x = x.expand(x_size, y_size, dim)
+        tiled_y = y.expand(x_size, y_size, dim)
+        kernel_input = (tiled_x - tiled_y).pow(2).mean(2)/float(dim)
+        return torch.exp(-kernel_input) # (x_size, y_size)
+
+    def compute_mmd(self, x, y):
+        x_kernel = self.compute_kernel(x, x)
+        y_kernel = self.compute_kernel(y, y)
+        xy_kernel = self.compute_kernel(x, y)
+        mmd = x_kernel.mean() + y_kernel.mean() - 2*xy_kernel.mean()
+        return mmd
