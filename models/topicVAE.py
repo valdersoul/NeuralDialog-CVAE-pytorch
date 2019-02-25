@@ -66,7 +66,7 @@ class TopicVAE(BaseTFModel):
         self.grad_clip = config.grad_clip
         self.grad_noise = config.grad_noise
 
-        self.prior_step = 10000
+        self.prior_step = 2000
 
         # topicEmbedding
         self.t_embedding = nn.Embedding(self.topic_vocab_size, config.topic_embed_size)
@@ -426,6 +426,12 @@ class TopicVAE(BaseTFModel):
                         param.requires_grad = False
                     for param in self.dec_cell_res.parameters():
                         param.requires_grad = False
+                    for param in self.mean_bn.parameters():
+                        param.requires_grad = False
+                    for param in self.logvar_bn.parameters():
+                        param.requires_grad = False
+                    prior_mu.detach()
+                    prior_logvar.detach()
 
                 #self.aug_elbo = self.avg_bow_loss + self.avg_da_loss + self.elbo + self.elbo_recog
 
