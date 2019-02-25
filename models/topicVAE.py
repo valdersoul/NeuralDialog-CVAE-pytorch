@@ -94,8 +94,8 @@ class TopicVAE(BaseTFModel):
         cond_embedding_size = config.topic_embed_size + 4 + 4 + self.context_cell_size
 
         # PriorNetwork for response, with approximated Dirchlet function
-        prior_input_size = output_embedding_size + cond_embedding_size#if not self.use_hcf else output_embedding_size + 30
-        self.logvar_fc = nn.Linear(prior_input_size, self.h_dim)
+        prior_input_size = output_embedding_size if not self.use_hcf else output_embedding_size + 30
+        self.logvar_fc = nn.(prior_input_size, self.h_dim)
         self.mean_fc = nn.Linear(prior_input_size, self.h_dim)
         self.mean_bn    = nn.BatchNorm1d(self.h_dim)                   # bn for mean
         self.logvar_bn  = nn.BatchNorm1d(self.h_dim)               # bn for logvar
@@ -138,13 +138,13 @@ class TopicVAE(BaseTFModel):
         else:
             dec_inputs_size = gen_inputs_size
 
-        # Content based Decoder
+        # Content based Decoder init_state
         if config.num_layer > 1:
             self.dec_init_state_net = nn.ModuleList([nn.Linear(dec_inputs_size, self.dec_cell_size) for i in range(config.num_layer)])
         else:
             self.dec_init_state_net = nn.Linear(dec_inputs_size, self.dec_cell_size)
         
-        # Response based Decoder
+        # Response based Decoder init_state
         response_gen_input_size = self.h_dim
         if config.num_layer > 1:
             self.dec_init_state_net_res = nn.ModuleList([nn.Linear(response_gen_input_size, self.dec_cell_size) for i in range(config.num_layer)])
