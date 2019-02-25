@@ -323,19 +323,9 @@ class TopicVAE(BaseTFModel):
                 #                                                         context_vector=selected_attribute_embedding)
                 # dec_input_embedding = None
                 # dec_seq_lens = None
-                # dec_outs, _, final_context_state = decoder_fn_lib.inference_loop(self.dec_cell, 
-                #                                                     self.dec_cell_proj, self.embedding,
-                #                                                     encoder_state = dec_init_state,
-                #                                                     start_of_sequence_id=self.go_id,
-                #                                                     end_of_sequence_id=self.eos_id,
-                #                                                     maximum_length=self.max_utt_len,
-                #                                                     num_decoder_symbols=self.vocab_size,
-                #                                                     context_vector=selected_attribute_embedding if self.use_hcf else None,
-                #                                                     decode_type='greedy')
-
-                dec_outs, _, final_context_state = decoder_fn_lib.inference_loop(self.dec_cell_res, 
-                                                                    self.dec_cell_proj_res, self.embedding,
-                                                                    encoder_state = prior_dec_init,
+                dec_outs, _, final_context_state = decoder_fn_lib.inference_loop(self.dec_cell, 
+                                                                    self.dec_cell_proj, self.embedding,
+                                                                    encoder_state = dec_init_state,
                                                                     start_of_sequence_id=self.go_id,
                                                                     end_of_sequence_id=self.eos_id,
                                                                     maximum_length=self.max_utt_len,
