@@ -75,6 +75,7 @@ class TopicVAE(BaseTFModel):
             self.d_embedding = nn.Embedding(self.da_vocab_size, config.da_embed_size)
         # wordEmbedding
         self.embedding = nn.Embedding(self.vocab_size, self.embed_size, padding_idx=0)
+        self.content_embedding = nn.Embedding(self.vocab_size, self.embed_size, padding_idx=0)
 
         # no dropout at last layer, we need to add one
         if self.sent_type == "bow":
@@ -84,6 +85,7 @@ class TopicVAE(BaseTFModel):
             input_embedding_size = output_embedding_size = self.sent_cell_size
         elif self.sent_type == "bi_rnn":
             self.bi_sent_cell = self.get_rnncell("gru", self.embed_size, self.sent_cell_size, keep_prob=1.0, num_layer=1, bidirectional=True)
+            self.content_bi_sent_cell = self.get_rnncell("gru", self.embed_size, self.sent_cell_size, keep_prob=1.0, num_layer=1, bidirectional=True)
             input_embedding_size = output_embedding_size = self.sent_cell_size * 2
 
         joint_embedding_size = input_embedding_size + 2
@@ -210,7 +212,7 @@ class TopicVAE(BaseTFModel):
         with variable_scope.variable_scope("wordEmbedding"):
 
             self.input_contexts = self.input_contexts.view(-1, self.max_utt_len)
-            input_embedding = self.embedding(self.input_contexts)
+            input_embedding = self.content_embedding(self.input_contexts)
             output_embedding = self.embedding(self.output_tokens)
 
             assert ((self.input_contexts.view(-1, self.max_utt_len) > 0).float() - (torch.max(torch.abs(input_embedding), 2)[0] > 0).float()).abs().sum().item() == 0,\
@@ -225,7 +227,7 @@ class TopicVAE(BaseTFModel):
                 output_embedding, _ = get_rnn_encode(output_embedding, self.sent_cell, self.output_lens,
                                                      self.keep_prob, scope="sent_rnn", reuse=True)
             elif self.sent_type == "bi_rnn":
-                input_embedding, sent_size = get_bi_rnn_encode(input_embedding, self.bi_sent_cell, scope="sent_bi_rnn")
+                input_embedding, sent_size = get_bi_rnn_encode(input_embedding, self.content_bi_sent_cell, scope="sent_bi_rnn")
                 output_embedding, _ = get_bi_rnn_encode(output_embedding, self.bi_sent_cell, self.output_lens, scope="sent_bi_rnn", reuse=True)
             else:
                 raise ValueError("Unknown sent_type. Must be one of [bow, rnn, bi_rnn]")
