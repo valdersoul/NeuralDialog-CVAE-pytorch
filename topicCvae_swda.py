@@ -127,7 +127,7 @@ def main():
 
                 test_feed.epoch_init(test_config.batch_size, test_config.backward_size,
                                      test_config.step_size, shuffle=True, intra_shuffle=False)
-                #model.test_model(test_feed, num_batch=5)
+                model.test_model(test_feed, num_batch=5)
                 model.train()
 
                 done_epoch = epoch + 1
