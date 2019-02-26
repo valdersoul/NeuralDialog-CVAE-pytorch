@@ -99,18 +99,8 @@ class TopicVAE(BaseTFModel):
 
         # PriorNetwork for response, with approximated Dirchlet function
         prior_input_size = output_embedding_size if not self.use_hcf else output_embedding_size + 30
-        # self.logvar_fc = nn.Linear(prior_input_size, self.h_dim)
-        # self.mean_fc = nn.Linear(prior_input_size, self.h_dim)
-        self.logvar_fc = nn.Sequential(
-                        nn.Linear(prior_input_size, np.maximum(self.h_dim * 2, 100)),
-                        nn.Tanh(),
-                        nn.Linear(np.maximum(self.h_dim * 2, 100), self.h_dim)
-                        )
-        self.mean_fc = nn.Sequential(
-                        nn.Linear(prior_input_size, np.maximum(self.h_dim * 2, 100)),
-                        nn.Tanh(),
-                        nn.Linear(np.maximum(self.h_dim * 2, 100), self.h_dim)
-                        )
+        self.logvar_fc = nn.Linear(prior_input_size, self.h_dim)
+        self.mean_fc = nn.Linear(prior_input_size, self.h_dim)
         self.mean_bn    = nn.BatchNorm1d(self.h_dim)                   # bn for mean
         self.logvar_bn  = nn.BatchNorm1d(self.h_dim)               # bn for logvar
         self.decoder_bn = nn.BatchNorm1d(self.vocab_size)
