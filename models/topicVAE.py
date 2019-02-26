@@ -103,12 +103,12 @@ class TopicVAE(BaseTFModel):
         # self.mean_fc = nn.Linear(prior_input_size, self.h_dim)
         self.logvar_fc = nn.Sequential(
                         nn.Linear(prior_input_size, np.maximum(self.h_dim * 2, 100)),
-                        nn.ReLU(),
+                        nn.Tanh(),
                         nn.Linear(np.maximum(self.h_dim * 2, 100), self.h_dim)
                         )
         self.mean_fc = nn.Sequential(
                         nn.Linear(prior_input_size, np.maximum(self.h_dim * 2, 100)),
-                        nn.ReLU(),
+                        nn.Tanh(),
                         nn.Linear(np.maximum(self.h_dim * 2, 100), self.h_dim)
                         )
         self.mean_bn    = nn.BatchNorm1d(self.h_dim)                   # bn for mean
@@ -341,9 +341,9 @@ class TopicVAE(BaseTFModel):
                 #                                                         context_vector=selected_attribute_embedding)
                 # dec_input_embedding = None
                 # dec_seq_lens = None
-                dec_outs, _, final_context_state = decoder_fn_lib.inference_loop(self.dec_cell, 
-                                                                    self.dec_cell_proj, self.embedding,
-                                                                    encoder_state = dec_init_state,
+                dec_outs, _, final_context_state = decoder_fn_lib.inference_loop(self.dec_cell_res, 
+                                                                    self.dec_cell_proj_res, self.embedding,
+                                                                    encoder_state = prior_dec_init,
                                                                     start_of_sequence_id=self.go_id,
                                                                     end_of_sequence_id=self.eos_id,
                                                                     maximum_length=self.max_utt_len,
@@ -351,7 +351,7 @@ class TopicVAE(BaseTFModel):
                                                                     context_vector=selected_attribute_embedding if self.use_hcf else None,
                                                                     decode_type='greedy')
                 
-                # print(final_context_state)
+                # print(final_contex:t_state)
             else:
                 # loop_func = decoder_fn_lib.context_decoder_fn_train(dec_init_state, selected_attribute_embedding)
                 # apply word dropping. Set dropped word to 0
@@ -431,7 +431,7 @@ class TopicVAE(BaseTFModel):
                 self.elbo = self.avg_rc_loss + self.avg_kld
                 self.elbo_recog = self.avg_rc_loss_recog + self.avg_kld_recog
                 # self.aug_elbo= self.avg_bow_loss + self.avg_da_loss + self.elbo# + kl_weights * self.elbo_recog
-                if self.global_t < self.prior_step:
+                if self.global_t > 0:#< self.prior_step:
                     self.aug_elbo= self.avg_bow_loss + self.avg_da_loss + self.avg_kld + self.avg_rc_loss
                 else:
                     self.aug_elbo = self.avg_rc_loss_recog + self.avg_kld_recog * self.full_kl_step
