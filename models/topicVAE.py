@@ -409,34 +409,35 @@ class TopicVAE(BaseTFModel):
                     kl_weights = 1.0
 
                 self.kl_w = kl_weights
-                self.elbo = self.avg_rc_loss + kl_weights * (self.avg_kld)
+                self.elbo = self.avg_rc_loss + self.avg_kld
                 self.elbo_recog = self.avg_rc_loss_recog + kl_weights * (self.avg_kld_recog)
-                if self.global_t < self.prior_step:
-                    self.aug_elbo= self.avg_bow_loss + self.avg_da_loss + self.avg_kld + self.avg_rc_loss
-                else:
-                    self.aug_elbo = self.avg_rc_loss_recog + self.avg_kld_recog
-                    for param in self.dec_cell_proj_res.parameters():
-                        param.requires_grad = False
-                    for param in self.dec_init_state_net_res.parameters():
-                        param.requires_grad = False
-                    for param in self.embedding.parameters():
-                        param.requires_grad = False
-                    for param in self.bi_sent_cell.parameters():
-                        param.requires_grad = False
-                    for param in self.mean_fc.parameters():
-                        param.requires_grad = False
-                    for param in self.logvar_fc.parameters():
-                        param.requires_grad = False
-                    for param in self.bow_project.parameters():
-                        param.requires_grad = False
-                    for param in self.dec_cell_res.parameters():
-                        param.requires_grad = False
-                    for param in self.mean_bn.parameters():
-                        param.requires_grad = False
-                    for param in self.logvar_bn.parameters():
-                        param.requires_grad = False
-                    prior_mu.detach()
-                    prior_logvar.detach()
+                self.aug_elbo = kl_weights * self.elbo_recog + self.elbo
+                # if self.global_t < self.prior_step:
+                #     self.aug_elbo= self.avg_bow_loss + self.avg_da_loss + self.avg_kld + self.avg_rc_loss
+                # else:
+                #     self.aug_elbo = self.avg_rc_loss_recog + self.avg_kld_recog
+                #     for param in self.dec_cell_proj_res.parameters():
+                #         param.requires_grad = False
+                #     for param in self.dec_init_state_net_res.parameters():
+                #         param.requires_grad = False
+                #     for param in self.embedding.parameters():
+                #         param.requires_grad = False
+                #     for param in self.bi_sent_cell.parameters():
+                #         param.requires_grad = False
+                #     for param in self.mean_fc.parameters():
+                #         param.requires_grad = False
+                #     for param in self.logvar_fc.parameters():
+                #         param.requires_grad = False
+                #     for param in self.bow_project.parameters():
+                #         param.requires_grad = False
+                #     for param in self.dec_cell_res.parameters():
+                #         param.requires_grad = False
+                #     for param in self.mean_bn.parameters():
+                #         param.requires_grad = False
+                #     for param in self.logvar_bn.parameters():
+                #         param.requires_grad = False
+                #     prior_mu.detach()
+                #     prior_logvar.detach()
 
                 #self.aug_elbo = self.avg_bow_loss + self.avg_da_loss + self.elbo + self.elbo_recog
 
