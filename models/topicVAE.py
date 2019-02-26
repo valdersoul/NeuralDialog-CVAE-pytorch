@@ -418,7 +418,7 @@ class TopicVAE(BaseTFModel):
                 prior_var_dir    = self.prior_var_dir.expand_as(prior_mu)
                 prior_logvar_dir = self.prior_logvar_dir.expand_as(prior_mu)
 
-                self.avg_kld_recog = self.kld(prior_mu, prior_logvar, recog_mu, recog_logvar)
+                self.avg_kld_recog = gaussian_kld(recog_mu, recog_logvar, prior_mu, prior_logvar)
                 #self.avg_kld_recog = self.compute_mmd(z, recog_z)
                 self.avg_kld = self.kld(prior_mean_dir, prior_logvar_dir, prior_mu, prior_logvar)
                 if mode == 'train':
@@ -429,7 +429,7 @@ class TopicVAE(BaseTFModel):
                 self.kl_w = kl_weights
                 self.elbo = self.avg_rc_loss + self.avg_kld
                 self.elbo_recog = self.avg_rc_loss_recog + kl_weights * (self.avg_kld_recog)
-                self.aug_elbo = kl_weights * self.elbo_recog + self.elbo
+                self.aug_elbo= self.avg_bow_loss + self.avg_da_loss + self.elbo + kl_weights * self.elbo_recog
                 # if self.global_t < self.prior_step:
                 #     self.aug_elbo= self.avg_bow_loss + self.avg_da_loss + self.avg_kld + self.avg_rc_loss
                 # else:
