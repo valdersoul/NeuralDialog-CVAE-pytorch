@@ -516,7 +516,7 @@ class TopicVAE(BaseTFModel):
                 break
             feed_dict = self.batch_2_feed(batch, global_t, use_prior=False)
             self.forward(feed_dict, mode='train')
-            elbo_loss, bow_loss, rc_loss, rc_ppl, rc_recog_loss, rc_recog_ppl, kl_recog_loss = self.elbo.item(),\ #kl_loss
+            elbo_loss, bow_loss, rc_loss, rc_ppl, rc_recog_loss, rc_recog_ppl, kl_recog_loss = self.elbo.item(),\
                                                                 self.avg_bow_loss.item(),\
                                                                 self.avg_rc_loss.item(),\
                                                                 self.rc_ppl.item(),\
