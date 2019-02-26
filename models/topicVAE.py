@@ -135,8 +135,8 @@ class TopicVAE(BaseTFModel):
                         )
         self.recog_logvar_bn = nn.BatchNorm1d(self.h_dim)
         self.recog_mean_bn = nn.BatchNorm1d(self.h_dim)
-        #self.recog_logvar_bn.weight.requires_grad = False
-        #self.recog_mean_bn.weight.requires_grad = False
+        self.recog_logvar_bn.weight.requires_grad = False
+        self.recog_mean_bn.weight.requires_grad = False
 
         #self.recog_logvar_bn.weight.fill_(1)
         #self.recog_mean_bn.weight.fill_(1)
@@ -418,45 +418,45 @@ class TopicVAE(BaseTFModel):
                 prior_var_dir    = self.prior_var_dir.expand_as(prior_mu)
                 prior_logvar_dir = self.prior_logvar_dir.expand_as(prior_mu)
 
-                self.avg_kld_recog = gaussian_kld(recog_mu, recog_logvar, prior_mu, prior_logvar)
-                self.avg_kld_recog = torch.mean(self.avg_kld_recog)
-                #self.avg_kld_recog = self.compute_mmd(z, recog_z)
+                # self.avg_kld_recog = gaussian_kld(recog_mu, recog_logvar, prior_mu, prior_logvar)
+                # self.avg_kld_recog = torch.mean(self.avg_kld_recog)
+                self.avg_kld_recog = self.compute_mmd(z, recog_z)
                 self.avg_kld = self.kld(prior_mean_dir, prior_logvar_dir, prior_mu, prior_logvar)
-                if mode == 'train':
-                    kl_weights = kl_weights = min(self.global_t / self.full_kl_step, 1.0)
-                else:
-                    kl_weights = 1.0
-
-                self.kl_w = kl_weights
-                self.elbo = self.avg_rc_loss + self.avg_kld
-                self.elbo_recog = self.avg_rc_loss_recog + kl_weights * (self.avg_kld_recog)
-                self.aug_elbo= self.avg_bow_loss + self.avg_da_loss + self.elbo# + kl_weights * self.elbo_recog
-                # if self.global_t < self.prior_step:
-                #     self.aug_elbo= self.avg_bow_loss + self.avg_da_loss + self.avg_kld + self.avg_rc_loss
+                # if mode == 'train':
+                #     kl_weights = kl_weights = min(self.global_t / self.full_kl_step, 1.0)
                 # else:
-                #     self.aug_elbo = self.avg_rc_loss_recog + self.avg_kld_recog
-                #     for param in self.dec_cell_proj_res.parameters():
-                #         param.requires_grad = False
-                #     for param in self.dec_init_state_net_res.parameters():
-                #         param.requires_grad = False
-                #     for param in self.embedding.parameters():
-                #         param.requires_grad = False
-                #     for param in self.bi_sent_cell.parameters():
-                #         param.requires_grad = False
-                #     for param in self.mean_fc.parameters():
-                #         param.requires_grad = False
-                #     for param in self.logvar_fc.parameters():
-                #         param.requires_grad = False
-                #     for param in self.bow_project.parameters():
-                #         param.requires_grad = False
-                #     for param in self.dec_cell_res.parameters():
-                #         param.requires_grad = False
-                #     for param in self.mean_bn.parameters():
-                #         param.requires_grad = False
-                #     for param in self.logvar_bn.parameters():
-                #         param.requires_grad = False
-                #     prior_mu.detach()
-                #     prior_logvar.detach()
+                #     kl_weights = 1.0
+
+                # self.kl_w = kl_weights
+                # self.elbo = self.avg_rc_loss + self.avg_kld
+                # self.elbo_recog = self.avg_rc_loss_recog + kl_weights * (self.avg_kld_recog)
+                # self.aug_elbo= self.avg_bow_loss + self.avg_da_loss + self.elbo# + kl_weights * self.elbo_recog
+                if self.global_t < self.prior_step:
+                    self.aug_elbo= self.avg_bow_loss + self.avg_da_loss + self.avg_kld + self.avg_rc_loss
+                else:
+                    self.aug_elbo = self.avg_rc_loss_recog + self.avg_kld_recog * self.full_kl_step
+                    for param in self.dec_cell_proj_res.parameters():
+                        param.requires_grad = False
+                    for param in self.dec_init_state_net_res.parameters():
+                        param.requires_grad = False
+                    for param in self.embedding.parameters():
+                        param.requires_grad = False
+                    for param in self.bi_sent_cell.parameters():
+                        param.requires_grad = False
+                    for param in self.mean_fc.parameters():
+                        param.requires_grad = False
+                    for param in self.logvar_fc.parameters():
+                        param.requires_grad = False
+                    for param in self.bow_project.parameters():
+                        param.requires_grad = False
+                    for param in self.dec_cell_res.parameters():
+                        param.requires_grad = False
+                    for param in self.mean_bn.parameters():
+                        param.requires_grad = False
+                    for param in self.logvar_bn.parameters():
+                        param.requires_grad = False
+                    prior_mu.detach()
+                    prior_logvar.detach()
 
                 #self.aug_elbo = self.avg_bow_loss + self.avg_da_loss + self.elbo + self.elbo_recog
 
@@ -492,7 +492,7 @@ class TopicVAE(BaseTFModel):
         if global_t is not None:
             feed_dict["global_t"] = global_t
 
-        feed_dict = {k: torch.from_numpy(v).cuda() if isinstance(v, np.ndarray) else v for k, v in feed_dict.items()}
+        feed_dict = {k: torch.from_numpy(v) if isinstance(v, np.ndarray) else v for k, v in feed_dict.items()}
 
         return feed_dict
 
@@ -520,7 +520,6 @@ class TopicVAE(BaseTFModel):
                                                                 self.avg_bow_loss.item(),\
                                                                 self.avg_rc_loss.item(),\
                                                                 self.rc_ppl.item(),\
-                                                                #self.avg_kld.item(),\
                                                                 self.avg_rc_loss_recog.item(),\
                                                                 self.rc_ppl_recog.item(),\
                                                                 self.avg_kld_recog.item(),\
@@ -535,7 +534,7 @@ class TopicVAE(BaseTFModel):
             rc_recog_ppls.append(rc_recog_ppl)
             rc_losses.append(rc_loss)
             rc_recog_losses.append(rc_recog_loss)
-            kl_losses.append(kl_loss)
+            #kl_losses.append(kl_loss)
             kl_recog_losses.append(kl_recog_loss)
 
             global_t += 1
