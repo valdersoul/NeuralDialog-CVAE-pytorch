@@ -124,7 +124,7 @@ class TopicVAE(BaseTFModel):
         # ReconNetwork from condition, with prior
         recog_input_size = cond_embedding_size if not self.use_hcf else cond_embedding_size + 30
         self.recog_logvar_fc = nn.Sequential(
-                        nn.Linear(self.recog_input_size, np.maximum(self.h_dim * 2, 100)),
+                        nn.Linear(recog_input_size, np.maximum(self.h_dim * 2, 100)),
                         nn.ReLU(),
                         nn.Linear(np.maximum(self.h_dim * 2, 100), self.h_dim)
                         )
