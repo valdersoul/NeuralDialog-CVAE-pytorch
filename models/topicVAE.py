@@ -421,7 +421,7 @@ class TopicVAE(BaseTFModel):
                 self.avg_kld_recog = gaussian_kld(recog_mu, recog_logvar, prior_mu, prior_logvar)
                 self.avg_kld_recog = torch.mean(self.avg_kld_recog)
                 #self.avg_kld_recog = self.compute_mmd(z, recog_z)
-                #self.avg_kld = self.kld(prior_mean_dir, prior_logvar_dir, prior_mu, prior_logvar)
+                self.avg_kld = self.kld(prior_mean_dir, prior_logvar_dir, prior_mu, prior_logvar)
                 if mode == 'train':
                     kl_weights = kl_weights = min(self.global_t / self.full_kl_step, 1.0)
                 else:
