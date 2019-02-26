@@ -427,9 +427,9 @@ class TopicVAE(BaseTFModel):
                 # else:
                 #     kl_weights = 1.0
 
-                # self.kl_w = kl_weights
-                # self.elbo = self.avg_rc_loss + self.avg_kld
-                # self.elbo_recog = self.avg_rc_loss_recog + kl_weights * (self.avg_kld_recog)
+                self.kl_w = 1.0
+                self.elbo = self.avg_rc_loss + self.avg_kld
+                self.elbo_recog = self.avg_rc_loss_recog + self.avg_kld_recog
                 # self.aug_elbo= self.avg_bow_loss + self.avg_da_loss + self.elbo# + kl_weights * self.elbo_recog
                 if self.global_t < self.prior_step:
                     self.aug_elbo= self.avg_bow_loss + self.avg_da_loss + self.avg_kld + self.avg_rc_loss
@@ -492,7 +492,7 @@ class TopicVAE(BaseTFModel):
         if global_t is not None:
             feed_dict["global_t"] = global_t
 
-        feed_dict = {k: torch.from_numpy(v) if isinstance(v, np.ndarray) else v for k, v in feed_dict.items()}
+        feed_dict = {k: torch.from_numpy(v).cuda() if isinstance(v, np.ndarray) else v for k, v in feed_dict.items()}
 
         return feed_dict
 
