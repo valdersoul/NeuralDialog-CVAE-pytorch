@@ -117,11 +117,11 @@ class TopicVAE(BaseTFModel):
         self.recog_mean_fc = nn.Linear(recog_input_size, self.h_dim)
         self.recog_logvar_bn = nn.BatchNorm1d(self.h_dim)
         self.recog_mean_bn = nn.BatchNorm1d(self.h_dim)
-        self.recog_logvar_bn.weight.requires_grad = False
-        self.recog_mean_bn.weight.requires_grad = False
+        #self.recog_logvar_bn.weight.requires_grad = False
+        #self.recog_mean_bn.weight.requires_grad = False
 
-        self.recog_logvar_bn.weight.fill_(1)
-        self.recog_mean_bn.weight.fill_(1)
+        #self.recog_logvar_bn.weight.fill_(1)
+        #self.recog_mean_bn.weight.fill_(1)
 
 
         gen_inputs_size = cond_embedding_size + config.latent_size
@@ -400,8 +400,8 @@ class TopicVAE(BaseTFModel):
                 prior_var_dir    = self.prior_var_dir.expand_as(prior_mu)
                 prior_logvar_dir = self.prior_logvar_dir.expand_as(prior_mu)
 
-                #self.avg_kld_recog = self.kld(prior_mu, prior_logvar, recog_mu, recog_logvar)
-                self.avg_kld_recog = self.compute_mmd(z, recog_z)
+                self.avg_kld_recog = self.kld(prior_mu, prior_logvar, recog_mu, recog_logvar)
+                #self.avg_kld_recog = self.compute_mmd(z, recog_z)
                 self.avg_kld = self.kld(prior_mean_dir, prior_logvar_dir, prior_mu, prior_logvar)
                 if mode == 'train':
                     kl_weights = kl_weights = min(self.global_t / self.full_kl_step, 1.0)
