@@ -102,12 +102,12 @@ class TopicVAE(BaseTFModel):
         # self.logvar_fc = nn.Linear(prior_input_size, self.h_dim)
         # self.mean_fc = nn.Linear(prior_input_size, self.h_dim)
         self.logvar_fc = nn.Sequential(
-                        nn.Linear(self.enc_cell_size, np.maximum(self.h_dim * 2, 100)),
+                        nn.Linear(prior_input_size, np.maximum(self.h_dim * 2, 100)),
                         nn.ReLU(),
                         nn.Linear(np.maximum(self.h_dim * 2, 100), self.h_dim)
                         )
         self.mean_fc = nn.Sequential(
-                        nn.Linear(self.enc_cell_size, np.maximum(self.h_dim * 2, 100)),
+                        nn.Linear(prior_input_size, np.maximum(self.h_dim * 2, 100)),
                         nn.ReLU(),
                         nn.Linear(np.maximum(self.h_dim * 2, 100), self.h_dim)
                         )
