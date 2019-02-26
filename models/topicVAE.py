@@ -464,7 +464,7 @@ class TopicVAE(BaseTFModel):
                     tb.summary.scalar("model/loss/da_loss", self.avg_da_loss.item()),
                     tb.summary.scalar("model/loss/rc_loss", self.avg_rc_loss.item()),
                     tb.summary.scalar("model/loss/elbo", self.elbo.item()),
-                    tb.summary.scalar("model/loss/kld", self.avg_kld.item()),
+                    #tb.summary.scalar("model/loss/kld", self.avg_kld.item()),
                     tb.summary.scalar("model/loss/bow_loss", self.avg_bow_loss.item())]
 
                 # self.log_p_z = norm_log_liklihood(latent_sample, prior_mu, prior_logvar)
@@ -516,11 +516,11 @@ class TopicVAE(BaseTFModel):
                 break
             feed_dict = self.batch_2_feed(batch, global_t, use_prior=False)
             self.forward(feed_dict, mode='train')
-            elbo_loss, bow_loss, rc_loss, rc_ppl, kl_loss, rc_recog_loss, rc_recog_ppl, kl_recog_loss = self.elbo.item(),\
+            elbo_loss, bow_loss, rc_loss, rc_ppl, rc_recog_loss, rc_recog_ppl, kl_recog_loss = self.elbo.item(),\ #kl_loss
                                                                 self.avg_bow_loss.item(),\
                                                                 self.avg_rc_loss.item(),\
                                                                 self.rc_ppl.item(),\
-                                                                self.avg_kld.item(),\
+                                                                #self.avg_kld.item(),\
                                                                 self.avg_rc_loss_recog.item(),\
                                                                 self.rc_ppl_recog.item(),\
                                                                 self.avg_kld_recog.item(),\
