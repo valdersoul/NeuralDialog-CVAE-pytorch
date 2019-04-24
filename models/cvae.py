@@ -760,10 +760,7 @@ class S2S(BaseTFModel):
         self.enc_cell = self.get_rnncell(config.cell_type, joint_embedding_size, self.context_cell_size, keep_prob=1.0, num_layer=config.num_layer)
         cond_embedding_size = config.topic_embed_size + self.context_cell_size
 
-        if self.use_profile:
-            dec_inputs_size = cond_embedding_size * 2
-        else:
-            dec_inputs_size = cond_embedding_size
+        dec_inputs_size = cond_embedding_size
 
         # Decoder
         if config.num_layer > 1:
@@ -774,6 +771,9 @@ class S2S(BaseTFModel):
 
         # decoder
         dec_input_embedding_size = self.embed_size
+        if self.use_profile:
+            self.atten_proj = nn.Linear(input_embedding_size, self.dec_cell_size)
+
         self.dec_cell = self.get_rnncell(config.cell_type, dec_input_embedding_size, self.dec_cell_size,
                                          config.keep_prob, config.num_layer)
         self.dec_cell_proj = nn.Linear(self.dec_cell_size, self.vocab_size)
@@ -787,8 +787,6 @@ class S2S(BaseTFModel):
             self.input_contexts = tf.placeholder(dtype=tf.int32, shape=(None, None, self.max_utt_len), name="dialog_context")
             self.context_lens = tf.placeholder(dtype=tf.int32, shape=(None,), name="context_lens")
             self.profile_lens = tf.placeholder(dtype=tf.int32, shape=(None,), name="profile_lens")
-            #self.my_profile = tf.placeholder(dtype=tf.float32, shape=(None, 4), name="my_profile")
-            #self.ot_profile = tf.placeholder(dtype=tf.float32, shape=(None, 4), name="ot_profile")
 
             # target response given the dialog context
             self.output_tokens = tf.placeholder(dtype=tf.int32, shape=(None, None), name="output_token")
@@ -811,6 +809,7 @@ class S2S(BaseTFModel):
             self.input_contexts = self.input_contexts.view(-1, self.max_utt_len)
             input_embedding = self.embedding(self.input_contexts)
             if use_profile:
+                profile_mask = (self.profile_contexts.sum(-1) != 0).float()
                 self.profile_contexts = self.profile_contexts.view(-1, self.max_utt_len)
                 profile_embedding = self.embedding(self.profile_contexts)
 
@@ -855,26 +854,27 @@ class S2S(BaseTFModel):
                 joint_embedding_input,
                 sequence_length=self.context_lens)
 
-            if use_profile:
-                _, enc_last_state_profile = utils.dynamic_rnn(
-                    self.enc_cell,
-                    joint_embedding_profile,
-                    sequence_length=self.profile_lens)
+            # remove due to the attention used
+            # if use_profile:
+            #     _, enc_last_state_profile = utils.dynamic_rnn(
+            #         self.enc_cell,
+            #         joint_embedding_profile,
+            #         sequence_length=self.profile_lens)
 
             if self.num_layer > 1:
                 enc_last_state = torch.cat([_ for _ in torch.unbind(enc_last_state)], 1)
-                if use_profile:
-                    enc_last_state_profile = torch.cat([_ for _ in torch.unbind(enc_last_state_profile)], 1)
+                # if use_profile:
+                #     enc_last_state_profile = torch.cat([_ for _ in torch.unbind(enc_last_state_profile)], 1)
             else:
                 enc_last_state = enc_last_state.squeeze(0)
-                if use_profile:
-                    enc_last_state_profile = enc_last_state_profile.squeeze(0)
+                # if use_profile:
+                #     enc_last_state_profile = enc_last_state_profile.squeeze(0)
 
         with variable_scope.variable_scope("generationNetwork"):
-            if use_profile:
-                dec_inputs = torch.cat([enc_last_state, enc_last_state_profile], 1)
-            else:
-                dec_inputs = enc_last_state
+            # if use_profile:
+            #     dec_inputs = torch.cat([enc_last_state, enc_last_state_profile], 1)
+            # else:
+            dec_inputs = enc_last_state
 
             # Decoder
             if self.num_layer > 1:
@@ -908,17 +908,23 @@ class S2S(BaseTFModel):
                 # Apply embedding dropout
                 dec_input_embedding = F.dropout(dec_input_embedding, 1 - self.keep_prob, self.training)
 
-                dec_outs, _, final_context_state =  decoder_fn_lib.train_loop(self.dec_cell, self.dec_cell_proj, dec_input_embedding,
-                    init_state=dec_init_state, context_vector=None, sequence_length=dec_seq_lens)
+                if not self.use_profile:
+                    dec_outs, _, final_context_state =  decoder_fn_lib.train_loop(self.dec_cell, self.dec_cell_proj, dec_input_embedding,
+                        init_state=dec_init_state, context_vector=None, sequence_length=dec_seq_lens)
+                else:
+                    dec_outs, _, final_context_state =  decoder_fn_lib.train_attention_loop(self.dec_cell, 
+                                                                                        self.dec_cell_proj, 
+                                                                                        dec_input_embedding,
+                                                                                        atten_fn=self.atten_proj,
+                                                                                        init_state=dec_init_state, 
+                                                                                        context_vector=profile_embedding, 
+                                                                                        max_length=max_dialog_len,
+                                                                                        atten_mask=profile_mask)
 
             if final_context_state is not None:
                 self.dec_out_words = final_context_state
-                if self.use_prior:
-                    self.dec_out_words_recog = final_context_state_recog
             else:
                 self.dec_out_words = torch.max(dec_outs, 2)[1]
-                if self.use_prior:
-                    self.dec_out_words_recog = torch.max(dec_outs_recog, 2)[1]
 
         if not mode == 'test':
             with variable_scope.variable_scope("loss"):
@@ -936,10 +942,6 @@ class S2S(BaseTFModel):
 
                 self.summary_op = [ \
                     tb.summary.scalar("model/loss/rc_loss", self.avg_rc_loss.item())]
-
-                # self.log_p_z = norm_log_liklihood(latent_sample, prior_mu, prior_logvar)
-                # self.log_q_z_xy = norm_log_liklihood(latent_sample, recog_mu, recog_logvar)
-                # self.est_marginal = torch.mean(rc_loss + bow_loss - self.log_p_z + self.log_q_z_xy)
 
     def batch_2_feed(self, batch, global_t, use_prior, repeat=1):
         context, context_lens, floors, topics, my_profiles, ot_profiles, outputs, output_lens, output_das, p_context, p_lens = batch

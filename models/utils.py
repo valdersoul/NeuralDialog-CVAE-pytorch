@@ -118,12 +118,14 @@ def attention(hidden, context_vector, atten_fn=None, atten_mask=None):
     """
     if atten_fn is not None:
         projected_context = F.tanh(atten_fn(context_vector))
+    else:
+        projected_context = context_vector
     hidden = hidden.permute(1, 2, 0)
     weights = torch.bmm(projected_context, hidden).squeeze()
     if atten_mask is not None:
-        mask = (weights != 0).float()
-    else:
         mask = atten_mask
+    else:
+        mask = (weights != 0).float()
     weights = torch.exp(weights - weights.max(-1, keepdim=True)[0]) * mask
     weights = weights / weights.sum(1, keepdim=True)
     context = (context_vector * weights.unsqueeze(2)).sum(1)
