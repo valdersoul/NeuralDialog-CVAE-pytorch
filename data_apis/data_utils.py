@@ -126,15 +126,12 @@ class PERSONAataLoader(LongDataLoader):
         rows = [self.data[idx] for idx in batch_ids]
         if self.persona_data:
             p_rows = [self.persona_data[idx] for idx in batch_ids]
-        # if self.meta_data:
-        #     meta_rows = [self.meta_data[idx] for idx in batch_ids]
-        #     topics = np.array([meta[2] for meta in meta_rows])
         dialog_lens = [self.data_lens[idx] for idx in batch_ids]
 
         cur_pos = [np.minimum(1.0, e_id/float(l)) for l in dialog_lens]
 
         # input_context, context_lens, floors, topics, a_profiles, b_Profiles, outputs, output_lens
-        context_lens, context_utts, floors, out_utts, out_lens, out_floors, out_das = [], [], [], [], [], [], []
+        context_lens, context_utts, floors, out_utts, out_lens, out_floors = [], [], [], [], [], []
         for i, row in enumerate(rows):
             if s_id < len(row)-1:
                 cut_row = row[s_id:e_id]
@@ -155,16 +152,10 @@ class PERSONAataLoader(LongDataLoader):
                 out_utts.append(out_utt)
                 out_lens.append(len(out_utt))
                 out_floors.append(out_floor)
-                #out_das.append(out_feat[0])
             else:
                 print(row)
                 raise ValueError("S_ID %d larger than row" % s_id)
 
-        # my_profiles = np.array([meta[out_floors[idx]] + [cur_pos[idx]] for idx, meta in enumerate(meta_rows)])
-        # if self.meta_data:
-        #     my_profiles = np.array([meta[out_floors[idx]] for idx, meta in enumerate(meta_rows)], dtype=np.float32)
-        #     ot_profiles = np.array([meta[1-out_floors[idx]] for idx, meta in enumerate(meta_rows)], dtype=np.float32)
-        #     vec_out_das = np.array(out_das, dtype=np.int64)
         vec_context_lens = np.array(context_lens, dtype=np.int64)
         vec_context = np.zeros((self.batch_size, np.max(vec_context_lens), self.max_utt_size), dtype=np.int64)
         vec_floors = np.zeros((self.batch_size, np.max(vec_context_lens)), dtype=np.int64)
