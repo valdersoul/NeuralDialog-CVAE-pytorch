@@ -74,6 +74,7 @@ class ProfileBaselineConfig(object):
     da_embed_size = 30  # dialog act embedding size
     cxt_cell_size = 600  # context encoder hidden size
     sent_cell_size = 300  # utterance encoder hidden size
+    profile_sent_cell_size = 100
     dec_cell_size = 400  # response decoder hidden size
     backward_size = 10  # how many utterance kept in the context window
     step_size = 1  # internal usage
