@@ -732,7 +732,6 @@ class S2S(BaseTFModel):
         self.context_cell_size = config.cxt_cell_size
         self.sent_cell_size = config.sent_cell_size
         self.dec_cell_size = config.dec_cell_size
-        self.profile_sent_cell_size = config.profile_sent_cell_size
 
         self.embed_size = config.embed_size
         self.sent_type = config.sent_type
@@ -754,10 +753,6 @@ class S2S(BaseTFModel):
         elif self.sent_type == "bi_rnn":
             self.bi_sent_cell = self.get_rnncell("gru", self.embed_size, self.sent_cell_size, keep_prob=1.0, num_layer=1, bidirectional=True)
             input_embedding_size = output_embedding_size = self.sent_cell_size * 2
-        
-        if self.use_profile:
-            self.profile_bi_sent_cell = self.get_rnncell("gru", self.embed_size, self.profile_sent_cell_size, keep_prob=1.0, num_layer=1, bidirectional=True)
-            profile_embedding_size = self.profile_sent_cell_size * 2
 
         # embedding + 1/0 identify encoding
         joint_embedding_size = input_embedding_size + 2
@@ -777,8 +772,8 @@ class S2S(BaseTFModel):
         # decoder
         dec_input_embedding_size = self.embed_size
         if self.use_profile:
-            self.atten_proj = nn.Linear(profile_embedding_size, self.dec_cell_size)
-            dec_input_embedding_size += profile_embedding_size
+            self.atten_proj = nn.Linear(input_embedding_size, self.dec_cell_size)
+            dec_input_embedding_size += self.dec_cell_size
 
         self.dec_cell = self.get_rnncell(config.cell_type, dec_input_embedding_size, self.dec_cell_size,
                                          config.keep_prob, config.num_layer)
@@ -831,7 +826,7 @@ class S2S(BaseTFModel):
             elif self.sent_type == "bi_rnn":
                 input_embedding, sent_size = get_bi_rnn_encode(input_embedding, self.bi_sent_cell, scope="sent_bi_rnn")
                 if use_profile:
-                    profile_embedding, p_sent_size = get_bi_rnn_encode(profile_embedding, self.profile_bi_sent_cell, scope="sent_bi_rnn")
+                    profile_embedding, p_sent_size = get_bi_rnn_encode(profile_embedding, self.bi_sent_cell, scope="sent_bi_rnn")
             else:
                 raise ValueError("Unknown sent_type. Must be one of [bow, rnn, bi_rnn]")
 
