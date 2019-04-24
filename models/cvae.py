@@ -773,6 +773,7 @@ class S2S(BaseTFModel):
         dec_input_embedding_size = self.embed_size
         if self.use_profile:
             self.atten_proj = nn.Linear(input_embedding_size, self.dec_cell_size)
+            dec_input_embedding_size += self.dec_cell_size
 
         self.dec_cell = self.get_rnncell(config.cell_type, dec_input_embedding_size, self.dec_cell_size,
                                          config.keep_prob, config.num_layer)
