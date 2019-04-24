@@ -831,7 +831,7 @@ class S2S(BaseTFModel):
             elif self.sent_type == "bi_rnn":
                 input_embedding, sent_size = get_bi_rnn_encode(input_embedding, self.bi_sent_cell, scope="sent_bi_rnn")
                 if use_profile:
-                    profile_embedding, p_sent_size = get_bi_rnn_encode(profile_embedding, self.p_bi_sent_cell  scope="sent_bi_rnn")
+                    profile_embedding, p_sent_size = get_bi_rnn_encode(profile_embedding, self.p_bi_sent_cell,  scope="sent_bi_rnn")
             else:
                 raise ValueError("Unknown sent_type. Must be one of [bow, rnn, bi_rnn]")
 
