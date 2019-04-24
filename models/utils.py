@@ -120,16 +120,18 @@ def attention(hidden, context_vector, atten_fn=None, atten_mask=None):
         projected_context = F.tanh(atten_fn(context_vector))
     else:
         projected_context = context_vector
-    hidden = hidden.permute(1, 2, 0)
+    hidden = hidden.permute(1,2,0)
     weights = torch.bmm(projected_context, hidden).squeeze()
     if atten_mask is not None:
         mask = atten_mask
     else:
         mask = (weights != 0).float()
-    weights = torch.exp(weights - weights.max(-1, keepdim=True)[0]) * mask
+    weights = torch.clamp(weights, -10, 10)
+    weights = torch.exp(weights) * mask + 1e-6
     weights = weights / weights.sum(1, keepdim=True)
-    context = (context_vector * weights.unsqueeze(2)).sum(1)
-
+    weights = weights.unsqueeze(2)
+    
+    context = torch.bmm(context_vector.permute(0,2,1), weights).squeeze()
     return context
 
 def decode_once(cell, input, hidden_state, context_vector, atten_fn=None, atten_mask=None):
