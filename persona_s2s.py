@@ -76,7 +76,7 @@ def main():
     if FLAGS.forward_only or FLAGS.resume:
         log_dir = os.path.join(FLAGS.work_dir, FLAGS.test_path)
     else:
-        log_dir = os.path.join(FLAGS.work_dir, "run"+str(int(time.time())))
+        log_dir = os.path.join(FLAGS.work_dir, FLAGS.model)
 
     # begin training
     if True:
