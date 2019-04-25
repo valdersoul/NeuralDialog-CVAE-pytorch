@@ -117,7 +117,7 @@ def attention(hidden, context_vector, atten_fn=None, atten_mask=None):
     Compute the profile-aware attentioned context vector
     """
     if atten_fn is not None:
-        projected_context = F.tanh(atten_fn(context_vector))
+        projected_context = atten_fn(context_vector)
     else:
         projected_context = context_vector
     hidden = hidden.permute(1,2,0)
@@ -139,7 +139,7 @@ def decode_once(cell, input, hidden_state, context_vector, atten_fn=None, atten_
     compute the attentioned input and output the result and the next hidden
     """
     context = attention(hidden_state, context_vector, atten_fn, atten_mask)
-    enhance_input = torch.cat([context, input], -1)
+    enhance_input = F.tanh(torch.cat([context, input], -1))
     output, hidden_state = cell(enhance_input.unsqueeze(1), hidden_state)
     return output, hidden_state
 
